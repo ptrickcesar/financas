@@ -11,8 +11,11 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
 <style>
 :root {
   --bg: #0f172a;
@@ -45,7 +48,7 @@ html, body { height: 100%; background: var(--bg); color: var(--text); font-famil
 input, select, textarea, button { font-family: var(--font); }
 
 /* ── LAYOUT ── */
-.app { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+.app { display: none; flex-direction: column; height: 100dvh; overflow: hidden; } /* Escondido por padrão até o login */
 .topbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 16px 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
 .topbar-title { font-size: 17px; font-weight: 600; }
 .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; padding-bottom: calc(var(--nav-h) + 16px); }
@@ -57,6 +60,12 @@ input, select, textarea, button { font-family: var(--font); }
 .nav-item.nav-add i { font-size: 26px; }
 .section { display: none; }
 .section.active { display: block; }
+
+/* ── LOGIN SCREEN ── */
+.login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+.login-screen i.logo { font-size: 64px; color: var(--accent); margin-bottom: 20px; }
+.login-screen h1 { font-size: 24px; font-weight: 600; margin-bottom: 10px; }
+.login-screen p { color: var(--text2); margin-bottom: 30px; font-size: 15px; }
 
 /* ── CARDS ── */
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
@@ -171,11 +180,25 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
 </style>
 </head>
 <body>
-<div class="app">
+
+<div class="login-screen" id="login-screen">
+  <i class="ti ti-wallet logo"></i>
+  <h1>Finança Pessoal</h1>
+  <p>Faça login para sincronizar e gerenciar suas finanças na nuvem.</p>
+  <button class="btn btn-primary" onclick="loginGoogle()" style="width: 100%; max-width: 300px; font-size: 16px; padding: 14px; margin-top: 10px;">
+    <i class="ti ti-brand-google"></i> Entrar com o Google
+  </button>
+</div>
+
+<div class="app" id="app-content">
 
   <div class="topbar">
     <div class="topbar-title" id="page-title">Dashboard</div>
-    <div id="topbar-right"></div>
+    <div id="topbar-right">
+      <button class="btn btn-sm" onclick="logoutGoogle()" style="background:var(--bg3); border:1px solid var(--border2); padding: 6px 12px;">
+        <i class="ti ti-logout"></i> Sair
+      </button>
+    </div>
   </div>
 
   <div class="scroll-area" id="scroll-area">
@@ -336,7 +359,9 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
       </div>
     </div>
 
-  </div><nav class="bottom-nav">
+  </div>
+  
+  <nav class="bottom-nav">
     <button class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard')">
       <i class="ti ti-chart-pie"></i><span>Início</span>
     </button>
@@ -385,7 +410,7 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
 </div>
 
 <script>
-// ── FIREBASE & DATA ──────────────────────────────────────────────────────────
+// ── FIREBASE & AUTH ──────────────────────────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyBaAbqJJCNqD7T1nZidABXlGxFwom3ABxk",
   authDomain: "app-financeiro-40ccd.firebaseapp.com",
@@ -395,12 +420,50 @@ const firebaseConfig = {
   appId: "1:633117236435:web:0785671da9f75b192cc826"
 };
 
-// Inicializa o Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-// Salvando tudo em um único documento para poupar uso do banco de dados
-const docRef = db.collection('usuarios').doc('meu_banco_de_dados');
+const auth = firebase.auth();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 
+let docRef = null;
+let unsubscribeSnap = null; 
+
+// Gerenciamento de Login
+auth.onAuthStateChanged(user => {
+  const loginScreen = document.getElementById('login-screen');
+  const appContent = document.getElementById('app-content');
+
+  if (user) {
+    // Usuário Logado
+    loginScreen.style.display = 'none';
+    appContent.style.display = 'flex';
+    
+    // Agora o documento do banco é amarrado ao ID único de quem logou
+    docRef = db.collection('usuarios').doc(user.uid);
+    carregarDados();
+  } else {
+    // Usuário Deslogado
+    loginScreen.style.display = 'flex';
+    appContent.style.display = 'none';
+    if (unsubscribeSnap) {
+      unsubscribeSnap(); // Para de escutar dados do usuário anterior
+      unsubscribeSnap = null;
+    }
+  }
+});
+
+function loginGoogle() {
+  auth.signInWithPopup(googleProvider).catch(err => {
+    console.error("Erro no login:", err);
+    alert("Falha ao entrar: " + err.message);
+  });
+}
+
+function logoutGoogle() {
+  auth.signOut();
+}
+
+// ── DADOS DO APLICATIVO ──────────────────────────────────────────────────────
 const CATS_PADRAO = [
   {id:'c1',nome:'Salário',tipo:'receita',cor:'#10b981',padrao:true},
   {id:'c2',nome:'Freelance',tipo:'receita',cor:'#06b6d4',padrao:true},
@@ -421,14 +484,16 @@ let tipoAtual = 'receita';
 let chartBar = null, chartPie = null;
 
 async function salvar(){ 
+  if(!docRef) return;
   try {
     await docRef.set(dados); 
   } catch(e) { console.error("Erro ao salvar no Firebase:", e); }
 }
 
-function carregar(){
-  // onSnapshot escuta o Firebase. Qualquer alteração lá (mesmo de outro celular) atualiza a tela na hora!
-  docRef.onSnapshot((docSnap) => {
+function carregarDados(){
+  if (unsubscribeSnap) unsubscribeSnap(); // limpa listener antigo se existir
+
+  unsubscribeSnap = docRef.onSnapshot((docSnap) => {
     if(docSnap.exists) { 
       dados = docSnap.data(); 
     } else { 
@@ -440,7 +505,6 @@ function carregar(){
 
 function atualizarInterface() {
   populaCatFiltro('filtro-cat-lanc');
-  // Atualiza apenas a tela que o usuário está vendo no momento
   if(document.getElementById('sec-dashboard').classList.contains('active')) renderDashboard();
   if(document.getElementById('sec-lancamentos').classList.contains('active')) renderLancamentos();
   if(document.getElementById('sec-orcamentos').classList.contains('active')) renderOrcamentos();
@@ -452,16 +516,9 @@ function seedDados(){
   const mes = String(d.getMonth()+1).padStart(2,'0');
   const ano = d.getFullYear();
   dados.lancamentos = [
-    {id:'l1',tipo:'receita',data:`${ano}-${mes}-05`,desc:'Salário',cat:'c1',valor:5000,obs:'',split:null},
-    {id:'l2',tipo:'despesa',data:`${ano}-${mes}-07`,desc:'Aluguel',cat:'c5',valor:1800,obs:'',split:null},
-    {id:'l3',tipo:'despesa',data:`${ano}-${mes}-10`,desc:'Supermercado',cat:'c6',valor:620,obs:'',split:null},
-    {id:'l4',tipo:'despesa',data:`${ano}-${mes}-12`,desc:'Uber',cat:'c7',valor:120,obs:'',split:null},
-    {id:'l5',tipo:'receita',data:`${ano}-${mes}-15`,desc:'Freelance site',cat:'c2',valor:1200,obs:'',split:null},
-    {id:'l6',tipo:'despesa',data:`${ano}-${mes}-18`,desc:'Jantar restaurante',cat:'c6',valor:200,obs:'',split:{nome:'Ana',pct:50}},
-    {id:'l7',tipo:'despesa',data:`${ano}-${mes}-20`,desc:'Netflix / Streaming',cat:'c11',valor:55,obs:'',split:{nome:'Irmão',pct:50}},
-    {id:'l8',tipo:'despesa',data:`${ano}-${mes}-22`,desc:'Farmácia',cat:'c8',valor:90,obs:'',split:null},
+    {id:'l1',tipo:'receita',data:`${ano}-${mes}-05`,desc:'Exemplo de Salário',cat:'c1',valor:3000,obs:'Lançamento inicial',split:null},
   ];
-  dados.orcamentos = { c5:2000, c6:800, c7:200, c9:300 };
+  dados.orcamentos = { c6:800 }; // Exemplo de orçamento de alimentação
   salvar();
 }
 
@@ -818,7 +875,7 @@ function exportarCSV(){
 
 // ── INIT ──────────────────────────────────────────────────────────
 limparForm();
-carregar(); // Vai buscar os dados na nuvem e renderizar a tela sozinho
+// O carregamento inicial agora é feito automaticamente pelo onAuthStateChanged do Firebase quando o login é detectado.
 </script>
 </body>
 </html>
