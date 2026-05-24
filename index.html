@@ -11,6 +11,8 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
 <style>
 :root {
   --bg: #0f172a;
@@ -171,16 +173,13 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
 <body>
 <div class="app">
 
-  <!-- TOP BAR -->
   <div class="topbar">
     <div class="topbar-title" id="page-title">Dashboard</div>
     <div id="topbar-right"></div>
   </div>
 
-  <!-- SCROLL AREA -->
   <div class="scroll-area" id="scroll-area">
 
-    <!-- ════ DASHBOARD ════ -->
     <div class="section active" id="sec-dashboard">
       <select id="filtro-mes-dash" onchange="renderDashboard()" style="width:100%;margin-bottom:14px;padding:10px 12px;"></select>
       <div class="metrics-grid">
@@ -227,7 +226,6 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
       </div>
     </div>
 
-    <!-- ════ LANÇAMENTOS ════ -->
     <div class="section" id="sec-lancamentos">
       <div class="filtro-row">
         <select id="filtro-mes-lanc" onchange="renderLancamentos()"></select>
@@ -245,7 +243,6 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
       </div>
     </div>
 
-    <!-- ════ ADICIONAR / EDITAR ════ -->
     <div class="section" id="sec-adicionar">
       <input type="hidden" id="edit-id"/>
 
@@ -277,7 +274,6 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
         <textarea id="form-obs" placeholder="Detalhes adicionais..."></textarea>
       </div>
 
-      <!-- SPLIT -->
       <div class="form-group" id="split-section" style="display:none">
         <label>Dividir despesa</label>
         <div class="split-panel">
@@ -315,7 +311,6 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
       </div>
     </div>
 
-    <!-- ════ ORÇAMENTOS ════ -->
     <div class="section" id="sec-orcamentos">
       <button class="btn btn-primary" style="margin-bottom:14px" onclick="abrirModalOrc()">
         <i class="ti ti-plus"></i> Definir orçamento
@@ -323,7 +318,6 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
       <div id="orc-lista"></div>
     </div>
 
-    <!-- ════ CATEGORIAS ════ -->
     <div class="section" id="sec-categorias">
       <button class="btn btn-primary" style="margin-bottom:14px" onclick="abrirModalCat()">
         <i class="ti ti-plus"></i> Nova categoria
@@ -342,10 +336,7 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
       </div>
     </div>
 
-  </div><!-- /scroll-area -->
-
-  <!-- BOTTOM NAV -->
-  <nav class="bottom-nav">
+  </div><nav class="bottom-nav">
     <button class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard')">
       <i class="ti ti-chart-pie"></i><span>Início</span>
     </button>
@@ -364,7 +355,6 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
   </nav>
 </div>
 
-<!-- MODAL CATEGORIA -->
 <div class="modal-bg hidden" id="modal-cat" onclick="fecharModal('modal-cat')">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
@@ -381,7 +371,6 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
   </div>
 </div>
 
-<!-- MODAL ORÇAMENTO -->
 <div class="modal-bg hidden" id="modal-orc" onclick="fecharModal('modal-orc')">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-handle"></div>
@@ -396,7 +385,22 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
 </div>
 
 <script>
-// ── DATA ──────────────────────────────────────────────────────────
+// ── FIREBASE & DATA ──────────────────────────────────────────────────────────
+const firebaseConfig = {
+  apiKey: "AIzaSyBaAbqJJCNqD7T1nZidABXlGxFwom3ABxk",
+  authDomain: "app-financeiro-40ccd.firebaseapp.com",
+  projectId: "app-financeiro-40ccd",
+  storageBucket: "app-financeiro-40ccd.firebasestorage.app",
+  messagingSenderId: "633117236435",
+  appId: "1:633117236435:web:0785671da9f75b192cc826"
+};
+
+// Inicializa o Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+// Salvando tudo em um único documento para poupar uso do banco de dados
+const docRef = db.collection('usuarios').doc('meu_banco_de_dados');
+
 const CATS_PADRAO = [
   {id:'c1',nome:'Salário',tipo:'receita',cor:'#10b981',padrao:true},
   {id:'c2',nome:'Freelance',tipo:'receita',cor:'#06b6d4',padrao:true},
@@ -416,12 +420,31 @@ let dados = { lancamentos:[], categorias:JSON.parse(JSON.stringify(CATS_PADRAO))
 let tipoAtual = 'receita';
 let chartBar = null, chartPie = null;
 
-function salvar(){ try{ localStorage.setItem('fp_v2', JSON.stringify(dados)); }catch(e){} }
+async function salvar(){ 
+  try {
+    await docRef.set(dados); 
+  } catch(e) { console.error("Erro ao salvar no Firebase:", e); }
+}
+
 function carregar(){
-  try{
-    const s = localStorage.getItem('fp_v2');
-    if(s){ dados = JSON.parse(s); } else { seedDados(); }
-  } catch(e){ seedDados(); }
+  // onSnapshot escuta o Firebase. Qualquer alteração lá (mesmo de outro celular) atualiza a tela na hora!
+  docRef.onSnapshot((docSnap) => {
+    if(docSnap.exists) { 
+      dados = docSnap.data(); 
+    } else { 
+      seedDados(); 
+    }
+    atualizarInterface();
+  });
+}
+
+function atualizarInterface() {
+  populaCatFiltro('filtro-cat-lanc');
+  // Atualiza apenas a tela que o usuário está vendo no momento
+  if(document.getElementById('sec-dashboard').classList.contains('active')) renderDashboard();
+  if(document.getElementById('sec-lancamentos').classList.contains('active')) renderLancamentos();
+  if(document.getElementById('sec-orcamentos').classList.contains('active')) renderOrcamentos();
+  if(document.getElementById('sec-categorias').classList.contains('active')) renderCategorias();
 }
 
 function seedDados(){
@@ -696,7 +719,7 @@ function editLanc(id){
 function delLanc(id){
   if(!confirm('Deletar este lançamento?')) return;
   dados.lancamentos = dados.lancamentos.filter(l=>l.id!==id);
-  salvar(); renderLancamentos();
+  salvar(); 
 }
 
 // ── ORÇAMENTOS ────────────────────────────────────────────────────
@@ -736,9 +759,9 @@ function salvarOrc(){
   const cat = document.getElementById('oc-cat').value;
   const val = parseFloat(document.getElementById('oc-val').value);
   if(!cat||isNaN(val)||val<=0){ alert('Preencha todos os campos.'); return; }
-  dados.orcamentos[cat]=val; salvar(); fecharModal('modal-orc'); renderOrcamentos();
+  dados.orcamentos[cat]=val; salvar(); fecharModal('modal-orc');
 }
-function delOrc(id){ if(!confirm('Remover orçamento?')) return; delete dados.orcamentos[id]; salvar(); renderOrcamentos(); }
+function delOrc(id){ if(!confirm('Remover orçamento?')) return; delete dados.orcamentos[id]; salvar(); }
 
 // ── CATEGORIAS ────────────────────────────────────────────────────
 function renderCategorias(){
@@ -759,12 +782,12 @@ function salvarCat(){
   const cor = document.getElementById('nc-cor').value;
   if(!nome){ alert('Digite um nome.'); return; }
   dados.categorias.push({id:'c'+uid(),nome,tipo,cor,padrao:false});
-  salvar(); fecharModal('modal-cat'); renderCategorias(); atualizarCatForm();
+  salvar(); fecharModal('modal-cat');
 }
 function delCat(id){
   if(dados.lancamentos.some(l=>l.cat===id)){ alert('Não é possível deletar: há lançamentos nessa categoria.'); return; }
   if(!confirm('Deletar categoria?')) return;
-  dados.categorias=dados.categorias.filter(c=>c.id!==id); salvar(); renderCategorias();
+  dados.categorias=dados.categorias.filter(c=>c.id!==id); salvar(); 
 }
 
 // ── MODAIS ────────────────────────────────────────────────────────
@@ -794,10 +817,8 @@ function exportarCSV(){
 }
 
 // ── INIT ──────────────────────────────────────────────────────────
-carregar();
-populaCatFiltro('filtro-cat-lanc');
 limparForm();
-renderDashboard();
+carregar(); // Vai buscar os dados na nuvem e renderizar a tela sozinho
 </script>
 </body>
 </html>
