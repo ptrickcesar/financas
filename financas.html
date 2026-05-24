@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<meta name="theme-color" content="#0f172a"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<title>Finança Pessoal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --bg: #0f172a;
+  --bg2: #1e293b;
+  --bg3: #334155;
+  --card: #1e293b;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #f1f5f9;
+  --text2: #94a3b8;
+  --text3: #64748b;
+  --green: #10b981;
+  --green2: #d1fae5;
+  --red: #f43f5e;
+  --red2: #ffe4e6;
+  --blue: #3b82f6;
+  --blue2: #dbeafe;
+  --amber: #f59e0b;
+  --amber2: #fef3c7;
+  --accent: #6366f1;
+  --accent2: #818cf8;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --font: 'DM Sans', sans-serif;
+  --mono: 'DM Mono', monospace;
+  --nav-h: 64px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; }
+input, select, textarea, button { font-family: var(--font); }
+
+/* ── LAYOUT ── */
+.app { display: flex; flex-direction: column; height: 100dvh; overflow: hidden; }
+.topbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 16px 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.topbar-title { font-size: 17px; font-weight: 600; }
+.scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; padding-bottom: calc(var(--nav-h) + 16px); }
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: var(--bg2); border-top: 1px solid var(--border); display: flex; align-items: stretch; z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
+.nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10px; color: var(--text3); border: none; background: none; cursor: pointer; padding: 0; transition: color 0.15s; }
+.nav-item i { font-size: 22px; }
+.nav-item.active { color: var(--accent2); }
+.nav-item.nav-add { background: var(--accent); color: #fff; border-radius: var(--radius); margin: 8px 6px; flex: 0 0 56px; width: 56px; height: 48px; font-size: 28px; }
+.nav-item.nav-add i { font-size: 26px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* ── CARDS ── */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+.card-title { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ── MÉTRICAS ── */
+.metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.metric { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+.metric-label { font-size: 11px; color: var(--text3); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+.metric-value { font-size: 20px; font-weight: 600; font-family: var(--mono); }
+.metric-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.green-txt { color: var(--green); }
+.red-txt { color: var(--red); }
+.blue-txt { color: var(--blue); }
+
+/* ── FORMS ── */
+.form-group { margin-bottom: 14px; }
+.form-group label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 6px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; }
+input[type=text], input[type=number], input[type=date], input[type=email], select, textarea {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm);
+  color: var(--text); padding: 12px 14px; font-size: 15px; outline: none; transition: border 0.15s;
+  -webkit-appearance: none; appearance: none;
+}
+input:focus, select:focus, textarea:focus { border-color: var(--accent2); }
+input[type=range] { padding: 6px 0; }
+textarea { min-height: 72px; resize: vertical; }
+select option { background: var(--bg2); }
+input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
+
+/* ── BUTTONS ── */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 12px 20px; border-radius: var(--radius-sm); font-size: 14px; font-weight: 500; border: 1px solid var(--border2); background: var(--bg3); color: var(--text); cursor: pointer; transition: all 0.15s; width: 100%; }
+.btn:active { opacity: 0.75; transform: scale(0.98); }
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-green { background: var(--green); border-color: var(--green); color: #fff; }
+.btn-red { background: var(--red); border-color: var(--red); color: #fff; }
+.btn-sm { padding: 7px 12px; font-size: 13px; width: auto; border-radius: 6px; }
+.btn-row { display: flex; gap: 10px; }
+.btn-row .btn { flex: 1; }
+
+/* ── TIPO TOGGLE ── */
+.tipo-toggle { display: flex; background: var(--bg3); border-radius: var(--radius-sm); padding: 4px; gap: 4px; margin-bottom: 14px; }
+.tipo-btn { flex: 1; padding: 10px; text-align: center; border-radius: 6px; font-size: 14px; font-weight: 500; cursor: pointer; border: none; background: transparent; color: var(--text2); transition: all 0.15s; }
+.tipo-btn.active-receita { background: var(--green); color: #fff; }
+.tipo-btn.active-despesa { background: var(--red); color: #fff; }
+
+/* ── LANÇAMENTOS ── */
+.lancamento-item { display: flex; align-items: center; gap: 12px; padding: 13px 0; border-bottom: 1px solid var(--border); }
+.lancamento-item:last-child { border-bottom: none; }
+.lanc-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
+.lanc-info { flex: 1; min-width: 0; }
+.lanc-desc { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lanc-meta { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.lanc-valor { font-size: 15px; font-weight: 600; font-family: var(--mono); flex-shrink: 0; }
+.split-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; background: rgba(99,102,241,0.2); color: var(--accent2); border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
+
+/* ── BADGES ── */
+.badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+.badge-receita { background: rgba(16,185,129,0.15); color: var(--green); }
+.badge-despesa { background: rgba(244,63,94,0.15); color: var(--red); }
+
+/* ── ORÇAMENTO ── */
+.orc-row { margin-bottom: 16px; }
+.orc-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
+.orc-nome { font-size: 14px; font-weight: 500; }
+.orc-vals { font-size: 12px; color: var(--text3); font-family: var(--mono); }
+.progress { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; transition: width 0.4s ease; }
+
+/* ── CATEGORIAS ── */
+.cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cat-chip { display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: var(--bg3); border-radius: var(--radius-sm); font-size: 13px; border: 1px solid var(--border); }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* ── SPLIT PANEL ── */
+.split-panel { background: rgba(99,102,241,0.08); border: 1px solid rgba(99,102,241,0.25); border-radius: var(--radius-sm); padding: 14px; margin-top: 4px; }
+.split-result { display: flex; justify-content: space-between; margin-top: 12px; gap: 10px; }
+.split-part { flex: 1; background: var(--bg); border-radius: var(--radius-sm); padding: 10px 12px; text-align: center; }
+.split-part-label { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+.split-part-val { font-size: 16px; font-weight: 600; font-family: var(--mono); }
+
+/* ── FILTROS ── */
+.filtro-row { display: flex; gap: 8px; margin-bottom: 14px; overflow-x: auto; padding-bottom: 2px; }
+.filtro-row select { min-width: 130px; padding: 9px 12px; flex-shrink: 0; }
+.search-input { width: 100%; margin-bottom: 12px; }
+
+/* ── MODAL ── */
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; display: flex; align-items: flex-end; }
+.modal-bg.hidden { display: none; }
+.modal { background: var(--bg2); border-radius: var(--radius) var(--radius) 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); width: 100%; max-height: 85dvh; overflow-y: auto; }
+.modal-title { font-size: 17px; font-weight: 600; margin-bottom: 20px; }
+.modal-handle { width: 36px; height: 4px; background: var(--bg3); border-radius: 2px; margin: 0 auto 16px; }
+
+/* ── CHART ── */
+.chart-wrap { position: relative; width: 100%; }
+
+/* ── EMPTY ── */
+.empty-state { text-align: center; padding: 32px 16px; color: var(--text3); }
+.empty-state i { font-size: 40px; display: block; margin-bottom: 10px; }
+.empty-state p { font-size: 14px; }
+
+/* ── SWIPE DELETE ── */
+.lanc-actions { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* ── SECTION HEADER ── */
+.sec-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.sec-header h2 { font-size: 13px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* LEGEND */
+.legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
+.legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-title" id="page-title">Dashboard</div>
+    <div id="topbar-right"></div>
+  </div>
+
+  <!-- SCROLL AREA -->
+  <div class="scroll-area" id="scroll-area">
+
+    <!-- ════ DASHBOARD ════ -->
+    <div class="section active" id="sec-dashboard">
+      <select id="filtro-mes-dash" onchange="renderDashboard()" style="width:100%;margin-bottom:14px;padding:10px 12px;"></select>
+      <div class="metrics-grid">
+        <div class="metric">
+          <div class="metric-label">Receitas</div>
+          <div class="metric-value green-txt" id="d-rec">R$ 0</div>
+          <div class="metric-sub" id="d-rec-n">0 lançamentos</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Despesas</div>
+          <div class="metric-value red-txt" id="d-desp">R$ 0</div>
+          <div class="metric-sub" id="d-desp-n">0 lançamentos</div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Saldo</div>
+          <div class="metric-value" id="d-saldo">R$ 0</div>
+          <div class="metric-sub" id="d-saldo-s"></div>
+        </div>
+        <div class="metric">
+          <div class="metric-label">Minha parte (splits)</div>
+          <div class="metric-value blue-txt" id="d-split">R$ 0</div>
+          <div class="metric-sub" id="d-split-n">0 splits</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Últimos 6 meses</div>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Receitas</div>
+          <div class="legend-item"><div class="legend-dot" style="background:#f43f5e"></div>Despesas</div>
+        </div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartBar" role="img" aria-label="Receitas vs despesas dos últimos 6 meses">Gráfico de barras mensais.</canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Despesas por categoria</div>
+        <div id="legend-pizza" class="legend" style="margin-bottom:10px"></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartPie" role="img" aria-label="Pizza de despesas por categoria">Distribuição por categoria.</canvas></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recentes</div>
+        <div id="dash-recentes"></div>
+      </div>
+    </div>
+
+    <!-- ════ LANÇAMENTOS ════ -->
+    <div class="section" id="sec-lancamentos">
+      <div class="filtro-row">
+        <select id="filtro-mes-lanc" onchange="renderLancamentos()"></select>
+        <select id="filtro-tipo-lanc" onchange="renderLancamentos()">
+          <option value="">Todos</option>
+          <option value="receita">Receitas</option>
+          <option value="despesa">Despesas</option>
+        </select>
+        <select id="filtro-cat-lanc" onchange="renderLancamentos()"></select>
+      </div>
+      <input class="search-input" type="text" id="busca-lanc" placeholder="Buscar descrição..." oninput="renderLancamentos()"/>
+      <div class="card" id="lista-card">
+        <div id="lista-items"></div>
+        <div class="empty-state hidden" id="lista-empty"><i class="ti ti-receipt-off"></i><p>Nenhum lançamento encontrado.</p></div>
+      </div>
+    </div>
+
+    <!-- ════ ADICIONAR / EDITAR ════ -->
+    <div class="section" id="sec-adicionar">
+      <input type="hidden" id="edit-id"/>
+
+      <div class="tipo-toggle" id="tipo-toggle">
+        <button class="tipo-btn active-receita" onclick="setTipo('receita')" id="btn-receita">Receita</button>
+        <button class="tipo-btn" onclick="setTipo('despesa')" id="btn-despesa">Despesa</button>
+      </div>
+
+      <div class="form-group">
+        <label>Descrição</label>
+        <input type="text" id="form-desc" placeholder="Ex: Salário, Aluguel, Mercado..."/>
+      </div>
+      <div class="form-group">
+        <label>Valor (R$)</label>
+        <input type="number" id="form-valor" min="0" step="0.01" placeholder="0,00" oninput="calcSplit()"/>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+        <div class="form-group">
+          <label>Data</label>
+          <input type="date" id="form-data"/>
+        </div>
+        <div class="form-group">
+          <label>Categoria</label>
+          <select id="form-cat"></select>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Observações (opcional)</label>
+        <textarea id="form-obs" placeholder="Detalhes adicionais..."></textarea>
+      </div>
+
+      <!-- SPLIT -->
+      <div class="form-group" id="split-section" style="display:none">
+        <label>Dividir despesa</label>
+        <div class="split-panel">
+          <div class="form-group" style="margin-bottom:10px">
+            <label>Nome da pessoa</label>
+            <input type="text" id="split-nome" placeholder="Ex: Namorado(a), Sócio, Amigo..." oninput="calcSplit()"/>
+          </div>
+          <div class="form-group" style="margin-bottom:0">
+            <label>Parte dela: <span id="split-pct-label" style="color:var(--accent2);font-family:var(--mono)">50%</span></label>
+            <input type="range" id="split-pct" min="1" max="99" step="1" value="50" oninput="calcSplit()"/>
+          </div>
+          <div class="split-result" id="split-result" style="display:none">
+            <div class="split-part">
+              <div class="split-part-label">Minha parte</div>
+              <div class="split-part-val green-txt" id="split-meu">—</div>
+            </div>
+            <div class="split-part">
+              <div class="split-part-label" id="split-deles-label">Parte deles</div>
+              <div class="split-part-val red-txt" id="split-deles">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" id="split-toggle-row" style="display:none">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" id="split-check" onchange="toggleSplit()" style="width:18px;height:18px;cursor:pointer;"/>
+          Dividir esta despesa com alguém
+        </label>
+      </div>
+
+      <div class="btn-row" style="margin-top:4px">
+        <button class="btn btn-primary" onclick="salvarLancamento()"><i class="ti ti-check"></i> Salvar</button>
+        <button class="btn" onclick="limparForm()"><i class="ti ti-x"></i> Limpar</button>
+      </div>
+    </div>
+
+    <!-- ════ ORÇAMENTOS ════ -->
+    <div class="section" id="sec-orcamentos">
+      <button class="btn btn-primary" style="margin-bottom:14px" onclick="abrirModalOrc()">
+        <i class="ti ti-plus"></i> Definir orçamento
+      </button>
+      <div id="orc-lista"></div>
+    </div>
+
+    <!-- ════ CATEGORIAS ════ -->
+    <div class="section" id="sec-categorias">
+      <button class="btn btn-primary" style="margin-bottom:14px" onclick="abrirModalCat()">
+        <i class="ti ti-plus"></i> Nova categoria
+      </button>
+      <div class="card">
+        <div class="card-title">Receitas</div>
+        <div class="cat-grid" id="cats-receita"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Despesas</div>
+        <div class="cat-grid" id="cats-despesa"></div>
+      </div>
+      <div class="card" style="margin-top:4px">
+        <div class="card-title">Exportar dados</div>
+        <button class="btn" onclick="exportarCSV()"><i class="ti ti-download"></i> Exportar CSV completo</button>
+      </div>
+    </div>
+
+  </div><!-- /scroll-area -->
+
+  <!-- BOTTOM NAV -->
+  <nav class="bottom-nav">
+    <button class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard')">
+      <i class="ti ti-chart-pie"></i><span>Início</span>
+    </button>
+    <button class="nav-item" id="nav-lancamentos" onclick="showSection('lancamentos')">
+      <i class="ti ti-list"></i><span>Lançamentos</span>
+    </button>
+    <button class="nav-item nav-add" id="nav-adicionar" onclick="showSection('adicionar')" title="Novo lançamento">
+      <i class="ti ti-plus"></i>
+    </button>
+    <button class="nav-item" id="nav-orcamentos" onclick="showSection('orcamentos')">
+      <i class="ti ti-target"></i><span>Orçamentos</span>
+    </button>
+    <button class="nav-item" id="nav-categorias" onclick="showSection('categorias')">
+      <i class="ti ti-settings"></i><span>Mais</span>
+    </button>
+  </nav>
+</div>
+
+<!-- MODAL CATEGORIA -->
+<div class="modal-bg hidden" id="modal-cat" onclick="fecharModal('modal-cat')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Nova categoria</div>
+    <div class="form-group"><label>Nome</label><input type="text" id="nc-nome" placeholder="Nome da categoria..."/></div>
+    <div class="form-group"><label>Tipo</label>
+      <select id="nc-tipo"><option value="despesa">Despesa</option><option value="receita">Receita</option></select>
+    </div>
+    <div class="form-group"><label>Cor</label><input type="color" id="nc-cor" value="#6366f1"/></div>
+    <div class="btn-row">
+      <button class="btn" onclick="fecharModal('modal-cat')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarCat()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ORÇAMENTO -->
+<div class="modal-bg hidden" id="modal-orc" onclick="fecharModal('modal-orc')">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">Definir orçamento mensal</div>
+    <div class="form-group"><label>Categoria (despesa)</label><select id="oc-cat"></select></div>
+    <div class="form-group"><label>Limite (R$)</label><input type="number" id="oc-val" min="0" step="0.01" placeholder="0,00"/></div>
+    <div class="btn-row">
+      <button class="btn" onclick="fecharModal('modal-orc')">Cancelar</button>
+      <button class="btn btn-primary" onclick="salvarOrc()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── DATA ──────────────────────────────────────────────────────────
+const CATS_PADRAO = [
+  {id:'c1',nome:'Salário',tipo:'receita',cor:'#10b981',padrao:true},
+  {id:'c2',nome:'Freelance',tipo:'receita',cor:'#06b6d4',padrao:true},
+  {id:'c3',nome:'Investimentos',tipo:'receita',cor:'#8b5cf6',padrao:true},
+  {id:'c4',nome:'Outros (receita)',tipo:'receita',cor:'#64748b',padrao:true},
+  {id:'c5',nome:'Moradia',tipo:'despesa',cor:'#3b82f6',padrao:true},
+  {id:'c6',nome:'Alimentação',tipo:'despesa',cor:'#f43f5e',padrao:true},
+  {id:'c7',nome:'Transporte',tipo:'despesa',cor:'#f59e0b',padrao:true},
+  {id:'c8',nome:'Saúde',tipo:'despesa',cor:'#ef4444',padrao:true},
+  {id:'c9',nome:'Lazer',tipo:'despesa',cor:'#a855f7',padrao:true},
+  {id:'c10',nome:'Educação',tipo:'despesa',cor:'#0ea5e9',padrao:true},
+  {id:'c11',nome:'Serviços',tipo:'despesa',cor:'#ec4899',padrao:true},
+  {id:'c12',nome:'Outros (despesa)',tipo:'despesa',cor:'#64748b',padrao:true},
+];
+
+let dados = { lancamentos:[], categorias:JSON.parse(JSON.stringify(CATS_PADRAO)), orcamentos:{} };
+let tipoAtual = 'receita';
+let chartBar = null, chartPie = null;
+
+function salvar(){ try{ localStorage.setItem('fp_v2', JSON.stringify(dados)); }catch(e){} }
+function carregar(){
+  try{
+    const s = localStorage.getItem('fp_v2');
+    if(s){ dados = JSON.parse(s); } else { seedDados(); }
+  } catch(e){ seedDados(); }
+}
+
+function seedDados(){
+  const d = new Date();
+  const mes = String(d.getMonth()+1).padStart(2,'0');
+  const ano = d.getFullYear();
+  dados.lancamentos = [
+    {id:'l1',tipo:'receita',data:`${ano}-${mes}-05`,desc:'Salário',cat:'c1',valor:5000,obs:'',split:null},
+    {id:'l2',tipo:'despesa',data:`${ano}-${mes}-07`,desc:'Aluguel',cat:'c5',valor:1800,obs:'',split:null},
+    {id:'l3',tipo:'despesa',data:`${ano}-${mes}-10`,desc:'Supermercado',cat:'c6',valor:620,obs:'',split:null},
+    {id:'l4',tipo:'despesa',data:`${ano}-${mes}-12`,desc:'Uber',cat:'c7',valor:120,obs:'',split:null},
+    {id:'l5',tipo:'receita',data:`${ano}-${mes}-15`,desc:'Freelance site',cat:'c2',valor:1200,obs:'',split:null},
+    {id:'l6',tipo:'despesa',data:`${ano}-${mes}-18`,desc:'Jantar restaurante',cat:'c6',valor:200,obs:'',split:{nome:'Ana',pct:50}},
+    {id:'l7',tipo:'despesa',data:`${ano}-${mes}-20`,desc:'Netflix / Streaming',cat:'c11',valor:55,obs:'',split:{nome:'Irmão',pct:50}},
+    {id:'l8',tipo:'despesa',data:`${ano}-${mes}-22`,desc:'Farmácia',cat:'c8',valor:90,obs:'',split:null},
+  ];
+  dados.orcamentos = { c5:2000, c6:800, c7:200, c9:300 };
+  salvar();
+}
+
+// ── UTILS ─────────────────────────────────────────────────────────
+const fmtV = v => 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtVSmall = v => {
+  const n = Number(v);
+  if(n >= 1000) return 'R$ '+n.toLocaleString('pt-BR',{minimumFractionDigits:0,maximumFractionDigits:0});
+  return 'R$ '+n.toFixed(2).replace('.',',');
+};
+const getCat = id => dados.categorias.find(c=>c.id===id)||{nome:'—',cor:'#64748b',tipo:'despesa'};
+const getMesKey = date => date.slice(0,7);
+const uid = () => 'l'+Date.now()+Math.random().toString(36).slice(2,5);
+const mesLabel = m => { const [a,mo]=m.split('-'); return new Date(a,mo-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}); };
+
+function valorEfetivo(l){
+  if(l.split && l.tipo==='despesa'){
+    const meuPct = 100 - l.split.pct;
+    return l.valor * (meuPct/100);
+  }
+  return l.valor;
+}
+
+// ── SEÇÕES ────────────────────────────────────────────────────────
+const SECOES = ['dashboard','lancamentos','adicionar','orcamentos','categorias'];
+const TITLES = {dashboard:'Dashboard',lancamentos:'Lançamentos',adicionar:'Novo lançamento',orcamentos:'Orçamentos',categorias:'Mais'};
+
+function showSection(sec){
+  SECOES.forEach(s=>{
+    document.getElementById('sec-'+s).classList.toggle('active', s===sec);
+    const nav = document.getElementById('nav-'+s);
+    if(nav) nav.classList.toggle('active', s===sec);
+  });
+  document.getElementById('page-title').textContent = TITLES[sec]||'';
+  document.getElementById('scroll-area').scrollTop = 0;
+  if(sec==='dashboard') renderDashboard();
+  if(sec==='lancamentos') renderLancamentos();
+  if(sec==='orcamentos') renderOrcamentos();
+  if(sec==='categorias') renderCategorias();
+  if(sec==='adicionar'){ if(!document.getElementById('edit-id').value) limparForm(); }
+}
+
+// ── MES SELECTS ───────────────────────────────────────────────────
+function populaMes(selId){
+  const sel = document.getElementById(selId);
+  const hoje = new Date();
+  const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  const meses = [...new Set(dados.lancamentos.map(l=>getMesKey(l.data)))].sort().reverse();
+  if(!meses.includes(mesAtual)) meses.unshift(mesAtual);
+  const cur = sel.value || mesAtual;
+  sel.innerHTML = meses.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${mesLabel(m).replace(/^\w/,c=>c.toUpperCase())}</option>`).join('');
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────
+function renderDashboard(){
+  populaMes('filtro-mes-dash');
+  const mes = document.getElementById('filtro-mes-dash').value;
+  const items = dados.lancamentos.filter(l=>getMesKey(l.data)===mes);
+  const recs = items.filter(l=>l.tipo==='receita');
+  const desps = items.filter(l=>l.tipo==='despesa');
+  const totRec = recs.reduce((s,l)=>s+Number(l.valor),0);
+  const totDesp = desps.reduce((s,l)=>s+valorEfetivo(l),0);
+  const saldo = totRec - totDesp;
+  const splits = desps.filter(l=>l.split);
+  const totSplit = splits.reduce((s,l)=>s+valorEfetivo(l),0);
+
+  document.getElementById('d-rec').textContent = fmtV(totRec);
+  document.getElementById('d-rec-n').textContent = recs.length+' lançamento'+(recs.length!==1?'s':'');
+  document.getElementById('d-desp').textContent = fmtV(totDesp);
+  document.getElementById('d-desp-n').textContent = desps.length+' lançamento'+(desps.length!==1?'s':'');
+  const sEl = document.getElementById('d-saldo');
+  sEl.textContent = fmtV(Math.abs(saldo));
+  sEl.className = 'metric-value '+(saldo>=0?'green-txt':'red-txt');
+  document.getElementById('d-saldo-s').textContent = saldo>=0?'✓ Positivo':'⚠ Negativo';
+  document.getElementById('d-split').textContent = fmtV(totSplit);
+  document.getElementById('d-split-n').textContent = splits.length+' split'+(splits.length!==1?'s':'');
+
+  // bar chart
+  const hoje = new Date();
+  const ult6 = [];
+  for(let i=5;i>=0;i--){ const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1); ult6.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }
+  const labs = ult6.map(m=>{ const [a,mo]=m.split('-'); return new Date(a,mo-1,1).toLocaleDateString('pt-BR',{month:'short'}); });
+  const recData = ult6.map(m=>dados.lancamentos.filter(l=>getMesKey(l.data)===m&&l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0));
+  const despData = ult6.map(m=>dados.lancamentos.filter(l=>getMesKey(l.data)===m&&l.tipo==='despesa').reduce((s,l)=>s+valorEfetivo(l),0));
+  if(chartBar) chartBar.destroy();
+  chartBar = new Chart(document.getElementById('chartBar'),{
+    type:'bar',
+    data:{ labels:labs, datasets:[
+      {label:'Receitas',data:recData,backgroundColor:'#10b981',borderRadius:5},
+      {label:'Despesas',data:despData,backgroundColor:'#f43f5e',borderRadius:5}
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{ x:{grid:{display:false},ticks:{color:'#64748b',font:{size:11}}}, y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#64748b',font:{size:11},callback:v=>v>=1000?'R$'+(v/1000).toFixed(0)+'k':'R$'+v}} }}
+  });
+
+  // pie
+  const catDesp = {};
+  desps.forEach(l=>{ catDesp[l.cat]=(catDesp[l.cat]||0)+valorEfetivo(l); });
+  const catIds = Object.keys(catDesp).sort((a,b)=>catDesp[b]-catDesp[a]);
+  const pLabels = catIds.map(id=>getCat(id).nome);
+  const pData = catIds.map(id=>Number(catDesp[id].toFixed(2)));
+  const pColors = catIds.map(id=>getCat(id).cor);
+  const legendEl = document.getElementById('legend-pizza');
+  if(catIds.length===0){ legendEl.innerHTML='<div style="font-size:12px;color:var(--text3)">Sem despesas</div>'; }
+  else { legendEl.innerHTML = catIds.map((id,i)=>`<div class="legend-item"><div class="legend-dot" style="background:${pColors[i]}"></div>${pLabels[i]}: ${fmtVSmall(pData[i])}</div>`).join(''); }
+  if(chartPie) chartPie.destroy();
+  chartPie = new Chart(document.getElementById('chartPie'),{
+    type:'doughnut',
+    data:{ labels:pLabels, datasets:[{data:pData,backgroundColor:pColors,borderWidth:0,hoverOffset:4}]},
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, cutout:'60%' }
+  });
+
+  // recentes
+  const recentes = [...items].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,6);
+  const el = document.getElementById('dash-recentes');
+  if(recentes.length===0){ el.innerHTML='<div class="empty-state"><i class="ti ti-receipt-off"></i><p>Sem lançamentos.</p></div>'; return; }
+  el.innerHTML = recentes.map(l=>lancItemHTML(l)).join('');
+}
+
+// ── LANÇAMENTOS ───────────────────────────────────────────────────
+function renderLancamentos(){
+  populaMes('filtro-mes-lanc');
+  const mes = document.getElementById('filtro-mes-lanc').value;
+  const tipo = document.getElementById('filtro-tipo-lanc').value;
+  const cat = document.getElementById('filtro-cat-lanc').value;
+  const busca = (document.getElementById('busca-lanc').value||'').toLowerCase();
+  populaCatFiltro('filtro-cat-lanc', cat);
+  let items = dados.lancamentos.filter(l=>getMesKey(l.data)===mes);
+  if(tipo) items = items.filter(l=>l.tipo===tipo);
+  if(cat) items = items.filter(l=>l.cat===cat);
+  if(busca) items = items.filter(l=>l.desc.toLowerCase().includes(busca));
+  items.sort((a,b)=>b.data.localeCompare(a.data));
+  const el = document.getElementById('lista-items');
+  const empty = document.getElementById('lista-empty');
+  if(items.length===0){ el.innerHTML=''; empty.classList.remove('hidden'); return; }
+  empty.classList.add('hidden');
+  el.innerHTML = items.map(l=>lancItemHTML(l, true)).join('');
+}
+
+function lancItemHTML(l, withActions=false){
+  const cat = getCat(l.cat);
+  const data = new Date(l.data+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
+  const splitTag = l.split ? `<span class="split-tag"><i class="ti ti-users" style="font-size:10px"></i>${l.split.nome} ${l.split.pct}%</span>` : '';
+  const valEf = valorEfetivo(l);
+  const valStr = l.split && l.tipo==='despesa' ? `${fmtVSmall(valEf)}<br><span style="font-size:11px;color:var(--text3)">de ${fmtVSmall(l.valor)}</span>` : fmtVSmall(valEf);
+  const actions = withActions ? `<div class="lanc-actions"><button class="btn btn-sm" onclick="editLanc('${l.id}')" style="padding:6px 10px;background:var(--bg3)"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-red" onclick="delLanc('${l.id}')" style="padding:6px 10px"><i class="ti ti-trash"></i></button></div>` : '';
+  return `<div class="lancamento-item">
+    <div class="lanc-icon" style="background:${cat.cor}22"><i class="ti ti-${l.tipo==='receita'?'arrow-down-left':'arrow-up-right'}" style="color:${cat.cor}"></i></div>
+    <div class="lanc-info">
+      <div class="lanc-desc">${l.desc}${splitTag}</div>
+      <div class="lanc-meta">${data} · ${cat.nome}${l.obs?' · '+l.obs:''}</div>
+    </div>
+    <div style="text-align:right;flex-shrink:0">
+      <div class="lanc-valor ${l.tipo==='receita'?'green-txt':'red-txt'}">${valStr}</div>
+    </div>
+    ${actions}
+  </div>`;
+}
+
+function populaCatFiltro(selId, cur){
+  const sel = document.getElementById(selId);
+  const prev = cur !== undefined ? cur : sel.value;
+  sel.innerHTML = '<option value="">Categorias</option>' + dados.categorias.map(c=>`<option value="${c.id}" ${c.id===prev?'selected':''}>${c.nome}</option>`).join('');
+}
+
+// ── FORM ──────────────────────────────────────────────────────────
+function setTipo(t){
+  tipoAtual = t;
+  document.getElementById('btn-receita').className = 'tipo-btn'+(t==='receita'?' active-receita':'');
+  document.getElementById('btn-despesa').className = 'tipo-btn'+(t==='despesa'?' active-despesa':'');
+  atualizarCatForm();
+  document.getElementById('split-toggle-row').style.display = t==='despesa'?'block':'none';
+  if(t==='receita'){ document.getElementById('split-check').checked=false; toggleSplit(); }
+}
+
+function atualizarCatForm(){
+  const sel = document.getElementById('form-cat');
+  sel.innerHTML = dados.categorias.filter(c=>c.tipo===tipoAtual).map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+}
+
+function toggleSplit(){
+  const on = document.getElementById('split-check').checked;
+  document.getElementById('split-section').style.display = on?'block':'none';
+  if(on) calcSplit();
+}
+
+function calcSplit(){
+  const val = parseFloat(document.getElementById('form-valor').value)||0;
+  const pct = parseInt(document.getElementById('split-pct').value)||50;
+  const nome = document.getElementById('split-nome').value||'Outra pessoa';
+  document.getElementById('split-pct-label').textContent = pct+'%';
+  document.getElementById('split-deles-label').textContent = 'Parte de '+nome;
+  const deles = val*(pct/100);
+  const meu = val - deles;
+  const res = document.getElementById('split-result');
+  if(val>0){ res.style.display='flex'; document.getElementById('split-meu').textContent=fmtV(meu); document.getElementById('split-deles').textContent=fmtV(deles); }
+  else { res.style.display='none'; }
+}
+
+function limparForm(){
+  document.getElementById('edit-id').value='';
+  document.getElementById('form-desc').value='';
+  document.getElementById('form-valor').value='';
+  document.getElementById('form-data').value=new Date().toISOString().slice(0,10);
+  document.getElementById('form-obs').value='';
+  document.getElementById('split-check').checked=false;
+  document.getElementById('split-nome').value='';
+  document.getElementById('split-pct').value=50;
+  document.getElementById('split-result').style.display='none';
+  document.getElementById('page-title').textContent='Novo lançamento';
+  setTipo('receita');
+}
+
+function salvarLancamento(){
+  const id = document.getElementById('edit-id').value;
+  const desc = document.getElementById('form-desc').value.trim();
+  const valor = parseFloat(document.getElementById('form-valor').value);
+  const data = document.getElementById('form-data').value;
+  const cat = document.getElementById('form-cat').value;
+  const obs = document.getElementById('form-obs').value.trim();
+  if(!desc||isNaN(valor)||valor<=0||!data){ alert('Preencha descrição, valor e data.'); return; }
+  const splitOn = document.getElementById('split-check').checked && tipoAtual==='despesa';
+  const splitNome = document.getElementById('split-nome').value.trim();
+  const splitPct = parseInt(document.getElementById('split-pct').value)||50;
+  const split = splitOn&&splitNome ? {nome:splitNome, pct:splitPct} : null;
+  const obj = {id:id||uid(), tipo:tipoAtual, data, desc, cat, valor, obs, split};
+  if(id){ const idx=dados.lancamentos.findIndex(l=>l.id===id); if(idx>=0) dados.lancamentos[idx]=obj; }
+  else { dados.lancamentos.push(obj); }
+  salvar();
+  limparForm();
+  showSection('lancamentos');
+}
+
+function editLanc(id){
+  const l = dados.lancamentos.find(x=>x.id===id);
+  if(!l) return;
+  showSection('adicionar');
+  document.getElementById('page-title').textContent='Editar lançamento';
+  document.getElementById('edit-id').value=l.id;
+  setTipo(l.tipo);
+  document.getElementById('form-desc').value=l.desc;
+  document.getElementById('form-valor').value=l.valor;
+  document.getElementById('form-data').value=l.data;
+  atualizarCatForm();
+  document.getElementById('form-cat').value=l.cat;
+  document.getElementById('form-obs').value=l.obs||'';
+  if(l.split && l.tipo==='despesa'){
+    document.getElementById('split-check').checked=true;
+    document.getElementById('split-nome').value=l.split.nome;
+    document.getElementById('split-pct').value=l.split.pct;
+    toggleSplit(); calcSplit();
+  }
+}
+
+function delLanc(id){
+  if(!confirm('Deletar este lançamento?')) return;
+  dados.lancamentos = dados.lancamentos.filter(l=>l.id!==id);
+  salvar(); renderLancamentos();
+}
+
+// ── ORÇAMENTOS ────────────────────────────────────────────────────
+function renderOrcamentos(){
+  const hoje = new Date();
+  const mes = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
+  const despMes = dados.lancamentos.filter(l=>getMesKey(l.data)===mes&&l.tipo==='despesa');
+  const el = document.getElementById('orc-lista');
+  const cats = dados.categorias.filter(c=>c.tipo==='despesa'&&dados.orcamentos[c.id]);
+  if(cats.length===0){ el.innerHTML=`<div class="card"><div class="empty-state"><i class="ti ti-target"></i><p>Nenhum orçamento definido ainda.</p></div></div>`; return; }
+  el.innerHTML = cats.map(cat=>{
+    const lim = dados.orcamentos[cat.id];
+    const gasto = despMes.filter(l=>l.cat===cat.id).reduce((s,l)=>s+valorEfetivo(l),0);
+    const pct = Math.min(100, Math.round((gasto/lim)*100));
+    const cor = pct>=100?'#f43f5e':pct>=80?'#f59e0b':'#10b981';
+    return `<div class="card orc-row" style="padding-bottom:12px">
+      <div class="orc-header">
+        <div class="orc-nome"><span class="dot" style="background:${cat.cor};margin-right:6px"></span>${cat.nome}</div>
+        <div class="orc-vals">${fmtVSmall(gasto)} / ${fmtVSmall(lim)}</div>
+      </div>
+      <div class="progress" style="margin-bottom:8px"><div class="progress-fill" style="width:${pct}%;background:${cor}"></div></div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:12px;color:var(--text3)">${pct}% usado</span>
+        <button class="btn btn-sm btn-red" onclick="delOrc('${cat.id}')"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirModalOrc(){
+  const sel = document.getElementById('oc-cat');
+  sel.innerHTML = dados.categorias.filter(c=>c.tipo==='despesa').map(c=>`<option value="${c.id}">${c.nome}</option>`).join('');
+  document.getElementById('oc-val').value='';
+  document.getElementById('modal-orc').classList.remove('hidden');
+}
+function salvarOrc(){
+  const cat = document.getElementById('oc-cat').value;
+  const val = parseFloat(document.getElementById('oc-val').value);
+  if(!cat||isNaN(val)||val<=0){ alert('Preencha todos os campos.'); return; }
+  dados.orcamentos[cat]=val; salvar(); fecharModal('modal-orc'); renderOrcamentos();
+}
+function delOrc(id){ if(!confirm('Remover orçamento?')) return; delete dados.orcamentos[id]; salvar(); renderOrcamentos(); }
+
+// ── CATEGORIAS ────────────────────────────────────────────────────
+function renderCategorias(){
+  ['receita','despesa'].forEach(tipo=>{
+    const el = document.getElementById('cats-'+tipo);
+    el.innerHTML = dados.categorias.filter(c=>c.tipo===tipo).map(c=>`
+      <div class="cat-chip">
+        <div class="dot" style="background:${c.cor}"></div>
+        <span style="flex:1;font-size:13px">${c.nome}</span>
+        ${!c.padrao?`<button class="btn btn-sm btn-red" onclick="delCat('${c.id}')" style="padding:4px 8px"><i class="ti ti-trash" style="font-size:14px"></i></button>`:''}
+      </div>`).join('');
+  });
+}
+function abrirModalCat(){ document.getElementById('nc-nome').value=''; document.getElementById('modal-cat').classList.remove('hidden'); }
+function salvarCat(){
+  const nome = document.getElementById('nc-nome').value.trim();
+  const tipo = document.getElementById('nc-tipo').value;
+  const cor = document.getElementById('nc-cor').value;
+  if(!nome){ alert('Digite um nome.'); return; }
+  dados.categorias.push({id:'c'+uid(),nome,tipo,cor,padrao:false});
+  salvar(); fecharModal('modal-cat'); renderCategorias(); atualizarCatForm();
+}
+function delCat(id){
+  if(dados.lancamentos.some(l=>l.cat===id)){ alert('Não é possível deletar: há lançamentos nessa categoria.'); return; }
+  if(!confirm('Deletar categoria?')) return;
+  dados.categorias=dados.categorias.filter(c=>c.id!==id); salvar(); renderCategorias();
+}
+
+// ── MODAIS ────────────────────────────────────────────────────────
+function fecharModal(id){ document.getElementById(id).classList.add('hidden'); }
+
+// ── EXPORT ────────────────────────────────────────────────────────
+function exportarCSV(){
+  const header = ['Data','Descrição','Tipo','Categoria','Valor total','Minha parte','Split - Pessoa','Split - % deles','Observações'];
+  const rows = [...dados.lancamentos].sort((a,b)=>b.data.localeCompare(a.data)).map(l=>[
+    new Date(l.data+'T12:00').toLocaleDateString('pt-BR'),
+    '"'+l.desc.replace(/"/g,'""')+'"',
+    l.tipo,
+    getCat(l.cat).nome,
+    l.valor.toFixed(2).replace('.',','),
+    valorEfetivo(l).toFixed(2).replace('.',','),
+    l.split?l.split.nome:'',
+    l.split?l.split.pct+'%':'',
+    '"'+(l.obs||'').replace(/"/g,'""')+'"'
+  ]);
+  const csv = [header.join(';'),...rows.map(r=>r.join(';'))].join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href=url; a.download='financas_'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+carregar();
+populaCatFiltro('filtro-cat-lanc');
+limparForm();
+renderDashboard();
+</script>
+</body>
+</html>
