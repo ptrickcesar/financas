@@ -11,8 +11,11 @@
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.8.1/firebase-firestore-compat.js"></script>
+
 <style>
 :root {
   --bg: #0f172a;
@@ -41,49 +44,15 @@
   --nav-h: 64px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-html, body { 
-  height: 100%; 
-  background: #090d16; /* Fundo externo levemente mais escuro para destacar o celular no PC */
-  color: var(--text); 
-  font-family: var(--font); 
-  font-size: 15px; 
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); font-size: 15px; }
 input, select, textarea, button { font-family: var(--font); }
 
-/* ── CONTAINER CELLPHONE (Evita que o app fique esticado no PC) ── */
-.app { 
-  display: flex; 
-  flex-direction: column; 
-  height: 100dvh; 
-  width: 100%;
-  max-width: 430px; /* Largura máxima de um smartphone moderno */
-  background: var(--bg);
-  overflow: hidden; 
-  position: relative;
-  box-shadow: 0 0 40px rgba(0, 0, 0, 0.6); /* Sombra elegante nas laterais quando visto no PC */
-}
-
+/* ── LAYOUT ── */
+.app { display: none; flex-direction: column; height: 100dvh; overflow: hidden; }
 .topbar { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 14px 16px 12px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
 .topbar-title { font-size: 17px; font-weight: 600; }
 .scroll-area { flex: 1; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 16px; padding-bottom: calc(var(--nav-h) + 16px); }
-
-/* Ajustado para fixar apenas dentro do limite do celular fictício */
-.bottom-nav { 
-  position: absolute; 
-  bottom: 0; 
-  left: 0; 
-  right: 0; 
-  height: var(--nav-h); 
-  background: var(--bg2); 
-  border-top: 1px solid var(--border); 
-  display: flex; 
-  align-items: stretch; 
-  z-index: 50; 
-  padding-bottom: env(safe-area-inset-bottom); 
-}
+.bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; height: var(--nav-h); background: var(--bg2); border-top: 1px solid var(--border); display: flex; align-items: stretch; z-index: 50; padding-bottom: env(safe-area-inset-bottom); }
 .nav-item { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 10px; color: var(--text3); border: none; background: none; cursor: pointer; padding: 0; transition: color 0.15s; }
 .nav-item i { font-size: 22px; }
 .nav-item.active { color: var(--accent2); }
@@ -91,6 +60,12 @@ input, select, textarea, button { font-family: var(--font); }
 .nav-item.nav-add i { font-size: 26px; }
 .section { display: none; }
 .section.active { display: block; }
+
+/* ── LOGIN SCREEN ── */
+.login-screen { position: fixed; inset: 0; background: var(--bg); z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; text-align: center; }
+.login-screen i.logo { font-size: 64px; color: var(--accent); margin-bottom: 20px; }
+.login-screen h1 { font-size: 24px; font-weight: 600; margin-bottom: 10px; }
+.login-screen p { color: var(--text2); margin-bottom: 30px; font-size: 15px; }
 
 /* ── CARDS ── */
 .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
@@ -146,11 +121,6 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
 .lanc-valor { font-size: 15px; font-weight: 600; font-family: var(--mono); flex-shrink: 0; }
 .split-tag { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; background: rgba(99,102,241,0.2); color: var(--accent2); border-radius: 4px; padding: 1px 5px; margin-left: 4px; }
 
-/* ── BADGES ── */
-.badge { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
-.badge-receita { background: rgba(16,185,129,0.15); color: var(--green); }
-.badge-despesa { background: rgba(244,63,94,0.15); color: var(--red); }
-
 /* ── ORÇAMENTO ── */
 .orc-row { margin-bottom: 16px; }
 .orc-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 7px; }
@@ -177,39 +147,38 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
 .search-input { width: 100%; margin-bottom: 12px; }
 
 /* ── MODAL ── */
-.modal-bg { position: absolute; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; display: flex; align-items: flex-end; }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,0.65); z-index: 200; display: flex; align-items: flex-end; }
 .modal-bg.hidden { display: none; }
 .modal { background: var(--bg2); border-radius: var(--radius) var(--radius) 0 0; padding: 20px 16px calc(20px + env(safe-area-inset-bottom)); width: 100%; max-height: 85dvh; overflow-y: auto; }
 .modal-title { font-size: 17px; font-weight: 600; margin-bottom: 20px; }
 .modal-handle { width: 36px; height: 4px; background: var(--bg3); border-radius: 2px; margin: 0 auto 16px; }
 
-/* ── CHART ── */
-.chart-wrap { position: relative; width: 100%; }
-
-/* ── EMPTY ── */
-.empty-state { text-align: center; padding: 32px 16px; color: var(--text3); }
-.empty-state i { font-size: 40px; display: block; margin-bottom: 10px; }
-.empty-state p { font-size: 14px; }
-
-/* ── SWIPE DELETE ── */
-.lanc-actions { display: flex; gap: 6px; flex-shrink: 0; }
-
-/* ── SECTION HEADER ── */
-.sec-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.sec-header h2 { font-size: 13px; font-weight: 500; color: var(--text2); text-transform: uppercase; letter-spacing: 0.05em; }
-
-/* LEGEND */
 .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
 .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
 </style>
 </head>
 <body>
-<div class="app">
+
+<div class="login-screen" id="login-screen">
+  <i class="ti ti-wallet logo"></i>
+  <h1>Finança Pessoal</h1>
+  <p>Faça login para sincronizar e gerenciar suas finanças na nuvem.</p>
+  <button class="btn btn-primary" onclick="loginGoogle()" style="width: 100%; max-width: 300px; font-size: 16px; padding: 14px; margin-top: 10px;">
+    <i class="ti ti-brand-google"></i> Entrar com o Google
+  </button>
+</div>
+
+<div class="app" id="app-content">
 
   <div class="topbar">
     <div class="topbar-title" id="page-title">Dashboard</div>
-    <div id="topbar-right"></div>
+    <div id="topbar-right" style="display:flex; align-items:center; gap:8px;">
+      <span id="user-status" style="font-size:11px; color:var(--text3)"></span>
+      <button class="btn btn-sm" onclick="logoutGoogle()" style="background:var(--bg3); border:1px solid var(--border2); padding: 6px 12px;">
+        <i class="ti ti-logout"></i> Sair
+      </button>
+    </div>
   </div>
 
   <div class="scroll-area" id="scroll-area">
@@ -245,13 +214,13 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
           <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>Receitas</div>
           <div class="legend-item"><div class="legend-dot" style="background:#f43f5e"></div>Despesas</div>
         </div>
-        <div class="chart-wrap" style="height:200px"><canvas id="chartBar" role="img" aria-label="Receitas vs despesas dos últimos 6 meses">Gráfico de barras mensais.</canvas></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartBar">Gráfico de barras mensais.</canvas></div>
       </div>
 
       <div class="card">
         <div class="card-title">Despesas por categoria</div>
         <div id="legend-pizza" class="legend" style="margin-bottom:10px"></div>
-        <div class="chart-wrap" style="height:200px"><canvas id="chartPie" role="img" aria-label="Pizza de despesas por categoria">Distribuição por categoria.</canvas></div>
+        <div class="chart-wrap" style="height:200px"><canvas id="chartPie">Distribuição por categoria.</canvas></div>
       </div>
 
       <div class="card">
@@ -305,15 +274,15 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
       </div>
       <div class="form-group">
         <label>Observações (opcional)</label>
-        <textarea id="form-obs" placeholder="Detalhes adicionais..."></textarea>
+        <textarea id="form-obs" placeholder="Quem comprou, detalhes..."></textarea>
       </div>
 
       <div class="form-group" id="split-section" style="display:none">
-        <label>Dividir despesa</label>
+        <label>Dividir despesa (Split)</label>
         <div class="split-panel">
           <div class="form-group" style="margin-bottom:10px">
             <label>Nome da pessoa</label>
-            <input type="text" id="split-nome" placeholder="Ex: Namorado(a), Sócio, Amigo..." oninput="calcSplit()"/>
+            <input type="text" id="split-nome" placeholder="Ex: Namorado(a)..." oninput="calcSplit()"/>
           </div>
           <div class="form-group" style="margin-bottom:0">
             <label>Parte dela: <span id="split-pct-label" style="color:var(--accent2);font-family:var(--mono)">50%</span></label>
@@ -335,7 +304,7 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
       <div class="form-group" id="split-toggle-row" style="display:none">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
           <input type="checkbox" id="split-check" onchange="toggleSplit()" style="width:18px;height:18px;cursor:pointer;"/>
-          Dividir esta despesa com alguém
+          Dividir esta despesa (Split)
         </label>
       </div>
 
@@ -353,6 +322,23 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
     </div>
 
     <div class="section" id="sec-categorias">
+      <div class="card" style="border: 1px solid rgba(99,102,241,0.4); background: rgba(99,102,241,0.03);">
+        <div class="card-title" style="color:var(--accent2)"><i class="ti ti-users"></i> Conectar Parceria (Modo Casal)</div>
+        <p style="font-size:12px; color:var(--text2); margin-bottom:12px;">Cole o ID do seu parceiro(a) para unificar o banco de dados e verem os mesmos resumos.</p>
+        <div class="form-group">
+          <label>Seu ID único (Copie e envie para seu parceiro)</label>
+          <input type="text" id="meu-uid-copiar" readonly onclick="this.select(); document.execCommand('copy'); alert('ID copiado!');" style="background:var(--bg2); cursor:pointer; font-family:var(--mono); font-size:12px;"/>
+        </div>
+        <div class="form-group">
+          <label>ID do Parceiro(a) para conectar</label>
+          <input type="text" id="input-id-parceiro" placeholder="Cole o ID dele(a) aqui..." style="font-family:var(--mono); font-size:12px;"/>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary btn-sm" onclick="conectarParceria()"><i class="ti ti-link"></i> Conectar Contas</button>
+          <button class="btn btn-red btn-sm" id="btn-desconectar" onclick="desconectarParceria()" style="display:none;"><i class="ti ti-unlink"></i> Desconectar</button>
+        </div>
+      </div>
+
       <button class="btn btn-primary" style="margin-bottom:14px" onclick="abrirModalCat()">
         <i class="ti ti-plus"></i> Nova categoria
       </button>
@@ -371,7 +357,7 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
     </div>
 
   </div>
-
+  
   <nav class="bottom-nav">
     <button class="nav-item active" id="nav-dashboard" onclick="showSection('dashboard')">
       <i class="ti ti-chart-pie"></i><span>Início</span>
@@ -379,7 +365,7 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
     <button class="nav-item" id="nav-lancamentos" onclick="showSection('lancamentos')">
       <i class="ti ti-list"></i><span>Lançamentos</span>
     </button>
-    <button class="nav-item nav-add" id="nav-adicionar" onclick="showSection('adicionar')" title="Novo lançamento">
+    <button class="nav-item nav-add" id="nav-adicionar" onclick="showSection('adicionar')">
       <i class="ti ti-plus"></i>
     </button>
     <button class="nav-item" id="nav-orcamentos" onclick="showSection('orcamentos')">
@@ -396,9 +382,7 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
     <div class="modal-handle"></div>
     <div class="modal-title">Nova categoria</div>
     <div class="form-group"><label>Nome</label><input type="text" id="nc-nome" placeholder="Nome da categoria..."/></div>
-    <div class="form-group"><label>Tipo</label>
-      <select id="nc-tipo"><option value="despesa">Despesa</option><option value="receita">Receita</option></select>
-    </div>
+    <div class="form-group"><label>Tipo</label><select id="nc-tipo"><option value="despesa">Despesa</option><option value="receita">Receita</option></select></div>
     <div class="form-group"><label>Cor</label><input type="color" id="nc-cor" value="#6366f1"/></div>
     <div class="btn-row">
       <button class="btn" onclick="fecharModal('modal-cat')">Cancelar</button>
@@ -421,7 +405,7 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
 </div>
 
 <script>
-// ── FIREBASE & DATA ──────────────────────────────────────────────────────────
+// ── FIREBASE CONFIG ─────────────────────────────────────────────────────────
 const firebaseConfig = {
   apiKey: "AIzaSyBaAbqJJCNqD7T1nZidABXlGxFwom3ABxk",
   authDomain: "app-financeiro-40ccd.firebaseapp.com",
@@ -431,20 +415,102 @@ const firebaseConfig = {
   appId: "1:633117236435:web:0785671da9f75b192cc826"
 };
 
-// Inicializa o Firebase
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
+const auth = firebase.auth();
+const googleProvider = new firebase.auth.GoogleAuthProvider();
 
-// FORÇAR CONFIGURAÇÃO LOCAL PARA EVITAR O ERRO DE DOMÍNIO
-db.settings({
-  host: "firestore.googleapis.com",
-  ssl: true,
-  merge: true
+let docRef = null; 
+let unsubscribeSnap = null;
+let usuarioAtual = null;
+
+// Gerenciamento de Autenticação com Verificação de Vínculo de Parceria
+auth.onAuthStateChanged(async (user) => {
+  const loginScreen = document.getElementById('login-screen');
+  const appContent = document.getElementById('app-content');
+
+  if (user) {
+    usuarioAtual = user;
+    loginScreen.style.display = 'none';
+    appContent.style.display = 'flex';
+    document.getElementById('meu-uid-copiar').value = user.uid;
+
+    // Verificar se o usuário possui um banco compartilhado/vinculado
+    try {
+      const vDoc = await db.collection('parcerias').doc(user.uid).get();
+      if(vDoc.exists && vDoc.data().idCompartilhado) {
+        // Se houver vínculo, usa o ID compartilhado (banco unificado)
+        const idComp = vDoc.data().idCompartilhado;
+        docRef = db.collection('usuarios').doc(idComp);
+        document.getElementById('user-status').innerHTML = "👥 Modo Parceria";
+        document.getElementById('btn-desconectar').style.display = 'block';
+        document.getElementById('input-id-parceiro').value = vDoc.data().parceiroUid || '';
+        document.getElementById('input-id-parceiro').disabled = true;
+      } else {
+        // Se não, roda em modo solo individual tradicional
+        docRef = db.collection('usuarios').doc(user.uid);
+        document.getElementById('user-status').innerHTML = "👤 Modo Solo";
+        document.getElementById('btn-desconectar').style.display = 'none';
+        document.getElementById('input-id-parceiro').value = '';
+        document.getElementById('input-id-parceiro').disabled = false;
+      }
+    } catch(e) {
+      console.error("Erro ao checar parcerias, carregando modo padrão: ", e);
+      docRef = db.collection('usuarios').doc(user.uid);
+    }
+    
+    carregarDados();
+  } else {
+    loginScreen.style.display = 'flex';
+    appContent.style.display = 'none';
+    if (unsubscribeSnap) { unsubscribeSnap(); unsubscribeSnap = null; }
+  }
 });
 
-// Salvando tudo em um único documento para poupar uso do banco de dados
-const docRef = db.collection('usuarios').doc('meu_banco_de_dados');
+function loginGoogle() { auth.signInWithPopup(googleProvider).catch(err => alert("Erro: " + err.message)); }
+function logoutGoogle() { auth.signOut(); }
 
+// ── SISTEMA DE VÍNCULO DE PARCERIA ──────────────────────────────────────────
+async function conectarParceria() {
+  const parceiroUid = document.getElementById('input-id-parceiro').value.trim();
+  if(!parceiroUid) { alert("Insira o ID do seu parceiro(a)."); return; }
+  if(parceiroUid === usuarioAtual.uid) { alert("Você não pode inserir seu próprio ID."); return; }
+
+  if(!confirm("Ao conectar, vocês passarão a compartilhar e ver o mesmo banco de dados. Confirmar vínculo?")) return;
+
+  // O ID do banco compartilhado será a junção dos IDs ou o ID de quem iniciou o convite
+  const idCompartilhado = "pool_" + usuarioAtual.uid;
+
+  try {
+    // Vincula a sua conta ao ID compartilhado
+    await db.collection('parcerias').doc(usuarioAtual.uid).set({ idCompartilhado: idCompartilhado, parceiroUid: parceiroUid });
+    // Vincula a conta do parceiro ao mesmo ID compartilhado
+    await db.collection('parcerias').doc(parceiroUid).set({ idCompartilhado: idCompartilhado, parceiroUid: usuarioAtual.uid });
+
+    alert("Contas vinculadas com sucesso! O aplicativo vai recarregar.");
+    window.location.reload();
+  } catch(e) {
+    alert("Erro ao conectar contas: " + e.message);
+  }
+}
+
+async function desconectarParceria() {
+  if(!confirm("Tem certeza que deseja desfazer a parceria? Seus dados voltarão ao modo individual.")) return;
+  try {
+    const vDoc = await db.collection('parcerias').doc(usuarioAtual.uid).get();
+    if(vDoc.exists) {
+      const parceiroUid = vDoc.data().parceiroUid;
+      await db.collection('parcerias').doc(usuarioAtual.uid).delete();
+      if(parceiroUid) await db.collection('parcerias').doc(parceiroUid).delete();
+    }
+    alert("Parceria desfeita! Recarregando...");
+    window.location.reload();
+  } catch(e) {
+    alert("Erro ao desconectar: " + e.message);
+  }
+}
+
+// ── DADOS DO APLICATIVO ──────────────────────────────────────────────────────
 const CATS_PADRAO = [
   {id:'c1',nome:'Salário',tipo:'receita',cor:'#10b981',padrao:true},
   {id:'c2',nome:'Freelance',tipo:'receita',cor:'#06b6d4',padrao:true},
@@ -465,18 +531,14 @@ let tipoAtual = 'receita';
 let chartBar = null, chartPie = null;
 
 async function salvar(){ 
-  try {
-    await docRef.set(dados); 
-  } catch(e) { console.error("Erro ao salvar no Firebase:", e); }
+  if(!docRef) return;
+  try { await docRef.set(dados); } catch(e) { console.error("Erro ao salvar:", e); }
 }
 
-function carregar(){
-  docRef.onSnapshot((docSnap) => {
-    if(docSnap.exists) { 
-      dados = docSnap.data(); 
-    } else { 
-      seedDados(); 
-    }
+function carregarDados(){
+  if (unsubscribeSnap) unsubscribeSnap();
+  unsubscribeSnap = docRef.onSnapshot((docSnap) => {
+    if(docSnap.exists) { dados = docSnap.data(); } else { seedDados(); }
     atualizarInterface();
   });
 }
@@ -494,20 +556,13 @@ function seedDados(){
   const mes = String(d.getMonth()+1).padStart(2,'0');
   const ano = d.getFullYear();
   dados.lancamentos = [
-    {id:'l1',tipo:'receita',data:`${ano}-${mes}-05`,desc:'Salário',cat:'c1',valor:5000,obs:'',split:null},
-    {id:'l2',tipo:'despesa',data:`${ano}-${mes}-07`,desc:'Aluguel',cat:'c5',valor:1800,obs:'',split:null},
-    {id:'l3',tipo:'despesa',data:`${ano}-${mes}-10`,desc:'Supermercado',cat:'c6',valor:620,obs:'',split:null},
-    {id:'l4',tipo:'despesa',data:`${ano}-${mes}-12`,desc:'Uber',cat:'c7',valor:120,obs:'',split:null},
-    {id:'l5',tipo:'receita',data:`${ano}-${mes}-15`,desc:'Freelance site',cat:'c2',valor:1200,obs:'',split:null},
-    {id:'l6',tipo:'despesa',data:`${ano}-${mes}-18`,desc:'Jantar restaurante',cat:'c6',valor:200,obs:'',split:{nome:'Ana',pct:50}},
-    {id:'l7',tipo:'despesa',data:`${ano}-${mes}-20`,desc:'Netflix / Streaming',cat:'c11',valor:55,obs:'',split:{nome:'Irmão',pct:50}},
-    {id:'l8',tipo:'despesa',data:`${ano}-${mes}-22`,desc:'Farmácia',cat:'c8',valor:90,obs:'',split:null},
+    {id:'l1',tipo:'receita',data:`${ano}-${mes}-05`,desc:'Saldo de Entrada',cat:'c1',valor:1000,obs:'Banco inicial',split:null},
   ];
-  dados.orcamentos = { c5:2000, c6:800, c7:200, c9:300 };
+  dados.orcamentos = {};
   salvar();
 }
 
-// ── UTILS ─────────────────────────────────────────────────────────
+// ── UTILS & REGRAS DE CÁLCULO ───────────────────────────────────────────
 const fmtV = v => 'R$ '+Number(v).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtVSmall = v => {
   const n = Number(v);
@@ -520,6 +575,7 @@ const uid = () => 'l'+Date.now()+Math.random().toString(36).slice(2,5);
 const mesLabel = m => { const [a,mo]=m.split('-'); return new Date(a,mo-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}); };
 
 function valorEfetivo(l){
+  // Se for uma despesa com split ativo, o resumo exibe a minha fração correspondente
   if(l.split && l.tipo==='despesa'){
     const meuPct = 100 - l.split.pct;
     return l.valor * (meuPct/100);
@@ -527,7 +583,7 @@ function valorEfetivo(l){
   return l.valor;
 }
 
-// ── SEÇÕES ────────────────────────────────────────────────────────
+// ── SEÇÕES CONTROL ───────────────────────────────────────────────────
 const SECOES = ['dashboard','lancamentos','adicionar','orcamentos','categorias'];
 const TITLES = {dashboard:'Dashboard',lancamentos:'Lançamentos',adicionar:'Novo lançamento',orcamentos:'Orçamentos',categorias:'Mais'};
 
@@ -546,7 +602,6 @@ function showSection(sec){
   if(sec==='adicionar'){ if(!document.getElementById('edit-id').value) limparForm(); }
 }
 
-// ── MES SELECTS ───────────────────────────────────────────────────
 function populaMes(selId){
   const sel = document.getElementById(selId);
   const hoje = new Date();
@@ -554,10 +609,10 @@ function populaMes(selId){
   const meses = [...new Set(dados.lancamentos.map(l=>getMesKey(l.data)))].sort().reverse();
   if(!meses.includes(mesAtual)) meses.unshift(mesAtual);
   const cur = sel.value || mesAtual;
-  sel.innerHTML = meses.map(m=>`<option value="${m}" ${m===m?'selected':''}>${mesLabel(m).replace(/^\w/,c=>c.toUpperCase())}</option>`).join('');
+  sel.innerHTML = meses.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${mesLabel(m).replace(/^\w/,c=>c.toUpperCase())}</option>`).join('');
 }
 
-// ── DASHBOARD ─────────────────────────────────────────────────────
+// ── RENDER DASHBOARD ─────────────────────────────────────────────────────
 function renderDashboard(){
   populaMes('filtro-mes-dash');
   const mes = document.getElementById('filtro-mes-dash').value;
@@ -581,6 +636,7 @@ function renderDashboard(){
   document.getElementById('d-split').textContent = fmtV(totSplit);
   document.getElementById('d-split-n').textContent = splits.length+' split'+(splits.length!==1?'s':'');
 
+  // bar chart
   const hoje = new Date();
   const ult6 = [];
   for(let i=5;i>=0;i--){ const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1); ult6.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }
@@ -598,6 +654,7 @@ function renderDashboard(){
       scales:{ x:{grid:{display:false},ticks:{color:'#64748b',font:{size:11}}}, y:{grid:{color:'rgba(255,255,255,0.05)'},ticks:{color:'#64748b',font:{size:11},callback:v=>v>=1000?'R$'+(v/1000).toFixed(0)+'k':'R$'+v}} }}
   });
 
+  // pie chart
   const catDesp = {};
   desps.forEach(l=>{ catDesp[l.cat]=(catDesp[l.cat]||0)+valorEfetivo(l); });
   const catIds = Object.keys(catDesp).sort((a,b)=>catDesp[b]-catDesp[a]);
@@ -614,6 +671,7 @@ function renderDashboard(){
     options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, cutout:'60%' }
   });
 
+  // recentes
   const recentes = [...items].sort((a,b)=>b.data.localeCompare(a.data)).slice(0,6);
   const el = document.getElementById('dash-recentes');
   if(recentes.length===0){ el.innerHTML='<div class="empty-state"><i class="ti ti-receipt-off"></i><p>Sem lançamentos.</p></div>'; return; }
@@ -666,7 +724,7 @@ function populaCatFiltro(selId, cur){
   sel.innerHTML = '<option value="">Categorias</option>' + dados.categorias.map(c=>`<option value="${c.id}" ${c.id===prev?'selected':''}>${c.nome}</option>`).join('');
 }
 
-// ── FORM ──────────────────────────────────────────────────────────
+// ── FORM CADASTRO ───────────────────────────────────────────────────
 function setTipo(t){
   tipoAtual = t;
   document.getElementById('btn-receita').className = 'tipo-btn'+(t==='receita'?' active-receita':'');
@@ -729,9 +787,7 @@ function salvarLancamento(){
   const obj = {id:id||uid(), tipo:tipoAtual, data, desc, cat, valor, obs, split};
   if(id){ const idx=dados.lancamentos.findIndex(l=>l.id===id); if(idx>=0) dados.lancamentos[idx]=obj; }
   else { dados.lancamentos.push(obj); }
-  salvar();
-  limparForm();
-  showSection('lancamentos');
+  salvar(); limparForm(); showSection('lancamentos');
 }
 
 function editLanc(id){
@@ -768,7 +824,7 @@ function renderOrcamentos(){
   const despMes = dados.lancamentos.filter(l=>getMesKey(l.data)===mes&&l.tipo==='despesa');
   const el = document.getElementById('orc-lista');
   const cats = dados.categorias.filter(c=>c.tipo==='despesa'&&dados.orcamentos[c.id]);
-  if(cats.length===0){ el.innerHTML=`<div class="card"><div class="empty-state"><i class="ti ti-target"></i><p>Nenhum orçamento definido ainda.</p></div></div>`; return; }
+  if(cats.length===0){ el.innerHTML=`<div class="card"><div class="empty-state"><i class="ti ti-target"></i><p>Nenhum orçamento definido.</p></div></div>`; return; }
   el.innerHTML = cats.map(cat=>{
     const lim = dados.orcamentos[cat.id];
     const gasto = despMes.filter(l=>l.cat===cat.id).reduce((s,l)=>s+valorEfetivo(l),0);
@@ -797,7 +853,7 @@ function abrirModalOrc(){
 function salvarOrc(){
   const cat = document.getElementById('oc-cat').value;
   const val = parseFloat(document.getElementById('oc-val').value);
-  if(!cat||isNaN(val)||val<=0){ alert('Preencha todos os campos.'); return; }
+  if(!cat||isNaN(val)||val<=0){ alert('Preencha os campos.'); return; }
   dados.orcamentos[cat]=val; salvar(); fecharModal('modal-orc');
 }
 function delOrc(id){ if(!confirm('Remover orçamento?')) return; delete dados.orcamentos[id]; salvar(); }
@@ -824,27 +880,21 @@ function salvarCat(){
   salvar(); fecharModal('modal-cat');
 }
 function delCat(id){
-  if(dados.lancamentos.some(l=>l.cat===id)){ alert('Não é possível deletar: há lançamentos nessa categoria.'); return; }
+  if(dados.lancamentos.some(l=>l.cat===id)){ alert('Categoria em uso.'); return; }
   if(!confirm('Deletar categoria?')) return;
   dados.categorias=dados.categorias.filter(c=>c.id!==id); salvar(); 
 }
 
-// ── MODAIS ────────────────────────────────────────────────────────
 function fecharModal(id){ document.getElementById(id).classList.add('hidden'); }
 
-// ── EXPORT ────────────────────────────────────────────────────────
+// ── EXPORT CSV ────────────────────────────────────────────────────
 function exportarCSV(){
   const header = ['Data','Descrição','Tipo','Categoria','Valor total','Minha parte','Split - Pessoa','Split - % deles','Observações'];
   const rows = [...dados.lancamentos].sort((a,b)=>b.data.localeCompare(a.data)).map(l=>[
     new Date(l.data+'T12:00').toLocaleDateString('pt-BR'),
-    '"'+l.desc.replace(/"/g,'""')+'"',
-    l.tipo,
-    getCat(l.cat).nome,
-    l.valor.toFixed(2).replace('.',','),
-    valorEfetivo(l).toFixed(2).replace('.',','),
-    l.split?l.split.nome:'',
-    l.split?l.split.pct+'%':'',
-    '"'+(l.obs||'').replace(/"/g,'""')+'"'
+    '"'+l.desc.replace(/"/g,'""')+'"', l.tipo, getCat(l.cat).nome,
+    l.valor.toFixed(2).replace('.',','), valorEfetivo(l).toFixed(2).replace('.',','),
+    l.split?l.split.nome:'', l.split?l.split.pct+'%':'', '"'+(l.obs||'').replace(/"/g,'""')+'"'
   ]);
   const csv = [header.join(';'),...rows.map(r=>r.join(';'))].join('\n');
   const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
@@ -855,9 +905,7 @@ function exportarCSV(){
   URL.revokeObjectURL(url);
 }
 
-// ── INIT ──────────────────────────────────────────────────────────
 limparForm();
-carregar();
 </script>
 </body>
 </html>
