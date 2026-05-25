@@ -156,6 +156,14 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
 .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
 .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text2); }
 .legend-dot { width: 9px; height: 9px; border-radius: 2px; flex-shrink: 0; }
+
+.grupo-linha { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; font-size: 14px; border-bottom: 1px solid var(--border); }
+.grupo-linha:last-child { border-bottom: none; }
+.grupo-linha span:first-child { color: var(--text2); }
+.grupo-linha span:last-child { font-family: var(--mono); font-weight: 600; }
+.grupo-saldo-box { margin-top: 12px; padding: 14px; border-radius: var(--radius-sm); background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.25); text-align: center; }
+.grupo-saldo-box .grupo-saldo-val { font-size: 22px; font-weight: 600; font-family: var(--mono); margin: 6px 0 4px; }
+.grupo-saldo-box .grupo-saldo-txt { font-size: 12px; color: var(--text2); }
 </style>
 </head>
 <body>
@@ -208,6 +216,20 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
         </div>
       </div>
 
+      <div class="card hidden" id="card-grupo">
+        <div class="card-title"><i class="ti ti-users"></i> <span id="grupo-titulo">Despesas em grupo</span></div>
+        <p style="font-size:11px;color:var(--text3);margin:-8px 0 12px" id="grupo-subtitulo"></p>
+        <div class="grupo-linha"><span>Total das despesas compartilhadas</span><span id="g-total-bruto">R$ 0</span></div>
+        <div class="grupo-linha"><span id="g-label-eu">Sua parte total</span><span class="blue-txt" id="g-minha-parte">R$ 0</span></div>
+        <div class="grupo-linha"><span id="g-label-parceiro">Parte do parceiro</span><span class="red-txt" id="g-parte-parceiro">R$ 0</span></div>
+        <div class="grupo-saldo-box" id="grupo-saldo-box">
+          <div class="grupo-saldo-txt">Saldo entre vocês (quem registrou pagou a conta)</div>
+          <div class="grupo-saldo-val" id="g-saldo-valor">R$ 0</div>
+          <div class="grupo-saldo-txt" id="g-saldo-texto">—</div>
+        </div>
+        <p style="font-size:10px;color:var(--text3);margin-top:12px;line-height:1.4" id="grupo-acumulado"></p>
+      </div>
+
       <div class="card">
         <div class="card-title">Últimos 6 meses</div>
         <div class="legend">
@@ -248,6 +270,7 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
 
     <div class="section" id="sec-adicionar">
       <input type="hidden" id="edit-id"/>
+      <input type="hidden" id="edit-compartilhado" value="0"/>
 
       <div class="tipo-toggle" id="tipo-toggle">
         <button class="tipo-btn active-receita" onclick="setTipo('receita')" id="btn-receita">Receita</button>
@@ -278,14 +301,14 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
       </div>
 
       <div class="form-group" id="split-section" style="display:none">
-        <label>Dividir despesa (Split)</label>
+        <label id="split-section-label">Dividir despesa com parceiro(a)</label>
         <div class="split-panel">
-          <div class="form-group" style="margin-bottom:10px">
-            <label>Nome da pessoa</label>
+          <div class="form-group" style="margin-bottom:10px" id="split-nome-row">
+            <label id="split-nome-label">Nome / e-mail do participante</label>
             <input type="text" id="split-nome" placeholder="Ex: Namorado(a)..." oninput="calcSplit()"/>
           </div>
           <div class="form-group" style="margin-bottom:0">
-            <label>Parte dela: <span id="split-pct-label" style="color:var(--accent2);font-family:var(--mono)">50%</span></label>
+            <label>Parte do(a) parceiro(a): <span id="split-pct-label" style="color:var(--accent2);font-family:var(--mono)">50%</span></label>
             <input type="range" id="split-pct" min="1" max="99" step="1" value="50" oninput="calcSplit()"/>
           </div>
           <div class="split-result" id="split-result" style="display:none">
@@ -304,8 +327,9 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
       <div class="form-group" id="split-toggle-row" style="display:none">
         <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
           <input type="checkbox" id="split-check" onchange="toggleSplit()" style="width:18px;height:18px;cursor:pointer;"/>
-          Dividir esta despesa (Split)
+          <span id="split-check-label">Dividir esta despesa com parceiro(a)</span>
         </label>
+        <p id="split-hint-parceria" style="font-size:11px;color:var(--text3);margin-top:6px;display:none">Conecte uma conta em Mais → Modo Parceria para dividir despesas entre vocês.</p>
       </div>
 
       <div class="btn-row" style="margin-top:4px">
@@ -323,19 +347,19 @@ input[type=color] { height: 44px; width: 100%; padding: 4px; cursor: pointer; }
 
     <div class="section" id="sec-categorias">
       <div class="card" style="border: 1px solid rgba(99,102,241,0.4); background: rgba(99,102,241,0.03);">
-        <div class="card-title" style="color:var(--accent2)"><i class="ti ti-users"></i> Conectar Parceria (Modo Casal)</div>
-        <p style="font-size:12px; color:var(--text2); margin-bottom:12px;">Cole o ID do seu parceiro(a) para unificar o banco de dados e verem os mesmos resumos.</p>
+        <div class="card-title" style="color:var(--accent2)"><i class="ti ti-users"></i> Modo Parceria (despesas compartilhadas)</div>
+        <p style="font-size:12px; color:var(--text2); margin-bottom:12px;">Cada um mantém seu controle individual. Ao conectar, vocês podem dividir despesas por % — cada um vê só a sua parte nos totais.</p>
         <div class="form-group">
-          <label>Seu ID único (Copie e envie para seu parceiro)</label>
-          <input type="text" id="meu-uid-copiar" readonly onclick="this.select(); document.execCommand('copy'); alert('ID copiado!');" style="background:var(--bg2); cursor:pointer; font-family:var(--mono); font-size:12px;"/>
+          <label>Seu e-mail (envie para seu parceiro conectar)</label>
+          <input type="text" id="meu-email-copiar" readonly onclick="copiarMeuEmail()" style="background:var(--bg2); cursor:pointer; font-family:var(--mono); font-size:12px;"/>
         </div>
         <div class="form-group">
-          <label>ID do Parceiro(a) para conectar</label>
-          <input type="text" id="input-id-parceiro" placeholder="Cole o ID dele(a) aqui..." style="font-family:var(--mono); font-size:12px;"/>
+          <label>E-mail do parceiro(a) (Gmail usado no login)</label>
+          <input type="email" id="input-email-parceiro" placeholder="parceiro@gmail.com" style="font-family:var(--mono); font-size:12px;"/>
         </div>
         <div class="btn-row">
-          <button class="btn btn-primary btn-sm" onclick="conectarParceria()"><i class="ti ti-link"></i> Conectar Contas</button>
-          <button class="btn btn-red btn-sm" id="btn-desconectar" onclick="desconectarParceria()" style="display:none;"><i class="ti ti-unlink"></i> Desconectar</button>
+          <button class="btn btn-primary btn-sm" onclick="conectarParceria()"><i class="ti ti-link"></i> Conectar contas</button>
+          <button class="btn btn-red btn-sm" id="btn-desconectar" onclick="desconectarParceria()" style="display:none;"><i class="ti ti-unlink"></i> Voltar ao modo individual</button>
         </div>
       </div>
 
@@ -412,101 +436,142 @@ const firebaseConfig = {
   projectId: "app-financeiro-40ccd",
   storageBucket: "app-financeiro-40ccd.firebasestorage.app",
   messagingSenderId: "633117236435",
-  appId: "1:633117236435:web:0785671da9f75b192cc826"
+  appId: "1:633117236435:web:0785671da9f75b192cc826",
+  measurementId: "G-9WZ74QNX7W"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 const googleProvider = new firebase.auth.GoogleAuthProvider();
+googleProvider.setCustomParameters({ prompt: 'select_account' });
 
-let docRef = null; 
+let docRef = null;
 let unsubscribeSnap = null;
+let unsubscribeShared = null;
 let usuarioAtual = null;
+let usuarioEmail = null;
+let parceiroEmail = null;
+let modoParceria = false;
+let sharedLancamentos = [];
 
-// Gerenciamento de Autenticação com Verificação de Vínculo de Parceria
+/** ID canônico = e-mail em minúsculas (evita duplicatas entre logins) */
+function getUserId() {
+  return usuarioEmail || (usuarioAtual?.email || '').toLowerCase().trim() || null;
+}
+
+function copiarMeuEmail() {
+  const el = document.getElementById('meu-email-copiar');
+  el.select();
+  navigator.clipboard?.writeText(el.value).catch(() => document.execCommand('copy'));
+  alert('E-mail copiado!');
+}
+
 auth.onAuthStateChanged(async (user) => {
   const loginScreen = document.getElementById('login-screen');
   const appContent = document.getElementById('app-content');
 
   if (user) {
+    if (!user.email) {
+      alert('Sua conta Google precisa ter um e-mail. Use outra conta.');
+      auth.signOut();
+      return;
+    }
     usuarioAtual = user;
+    usuarioEmail = user.email.toLowerCase().trim();
     loginScreen.style.display = 'none';
     appContent.style.display = 'flex';
-    document.getElementById('meu-uid-copiar').value = user.uid;
+    document.getElementById('meu-email-copiar').value = usuarioEmail;
+    document.getElementById('user-status').textContent = usuarioEmail;
 
-    // Verificar se o usuário possui um banco compartilhado/vinculado
+    docRef = db.collection('usuarios').doc(usuarioEmail);
+    await db.collection('usuarios').doc(usuarioEmail).set({
+      email: usuarioEmail,
+      nome: user.displayName || '',
+      uidAuth: user.uid,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    parceiroEmail = null;
+    modoParceria = false;
     try {
-      const vDoc = await db.collection('parcerias').doc(user.uid).get();
-      if(vDoc.exists && vDoc.data().idCompartilhado) {
-        // Se houver vínculo, usa o ID compartilhado (banco unificado)
-        const idComp = vDoc.data().idCompartilhado;
-        docRef = db.collection('usuarios').doc(idComp);
-        document.getElementById('user-status').innerHTML = "👥 Modo Parceria";
+      const vDoc = await db.collection('parcerias').doc(usuarioEmail).get();
+      if (vDoc.exists && vDoc.data().parceiroEmail) {
+        parceiroEmail = (vDoc.data().parceiroEmail || '').toLowerCase().trim();
+        modoParceria = vDoc.data().ativo !== false;
+        document.getElementById('user-status').innerHTML = '👥 Parceria · ' + parceiroEmail;
         document.getElementById('btn-desconectar').style.display = 'block';
-        document.getElementById('input-id-parceiro').value = vDoc.data().parceiroUid || '';
-        document.getElementById('input-id-parceiro').disabled = true;
+        document.getElementById('input-email-parceiro').value = parceiroEmail;
+        document.getElementById('input-email-parceiro').disabled = true;
       } else {
-        // Se não, roda em modo solo individual tradicional
-        docRef = db.collection('usuarios').doc(user.uid);
-        document.getElementById('user-status').innerHTML = "👤 Modo Solo";
+        document.getElementById('user-status').innerHTML = '👤 Individual · ' + usuarioEmail;
         document.getElementById('btn-desconectar').style.display = 'none';
-        document.getElementById('input-id-parceiro').value = '';
-        document.getElementById('input-id-parceiro').disabled = false;
+        document.getElementById('input-email-parceiro').value = '';
+        document.getElementById('input-email-parceiro').disabled = false;
       }
-    } catch(e) {
-      console.error("Erro ao checar parcerias, carregando modo padrão: ", e);
-      docRef = db.collection('usuarios').doc(user.uid);
+    } catch (e) {
+      console.error('Erro ao checar parceria:', e);
     }
-    
+
+    atualizarUISplitParceria();
     carregarDados();
+    carregarCompartilhados();
   } else {
+    usuarioAtual = null;
+    usuarioEmail = null;
+    parceiroEmail = null;
+    modoParceria = false;
     loginScreen.style.display = 'flex';
     appContent.style.display = 'none';
     if (unsubscribeSnap) { unsubscribeSnap(); unsubscribeSnap = null; }
+    if (unsubscribeShared) { unsubscribeShared(); unsubscribeShared = null; }
   }
 });
 
-function loginGoogle() { auth.signInWithPopup(googleProvider).catch(err => alert("Erro: " + err.message)); }
+function loginGoogle() {
+  auth.signInWithPopup(googleProvider).catch(err => alert('Erro: ' + err.message));
+}
 function logoutGoogle() { auth.signOut(); }
 
-// ── SISTEMA DE VÍNCULO DE PARCERIA ──────────────────────────────────────────
 async function conectarParceria() {
-  const parceiroUid = document.getElementById('input-id-parceiro').value.trim();
-  if(!parceiroUid) { alert("Insira o ID do seu parceiro(a)."); return; }
-  if(parceiroUid === usuarioAtual.uid) { alert("Você não pode inserir seu próprio ID."); return; }
+  const emailParceiro = (document.getElementById('input-email-parceiro').value || '').toLowerCase().trim();
+  if (!emailParceiro) { alert('Insira o e-mail Gmail do seu parceiro(a).'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailParceiro)) { alert('E-mail inválido.'); return; }
+  if (emailParceiro === usuarioEmail) { alert('Você não pode conectar seu próprio e-mail.'); return; }
 
-  if(!confirm("Ao conectar, vocês passarão a compartilhar e ver o mesmo banco de dados. Confirmar vínculo?")) return;
-
-  // O ID do banco compartilhado será a junção dos IDs ou o ID de quem iniciou o convite
-  const idCompartilhado = "pool_" + usuarioAtual.uid;
+  if (!confirm('Ao conectar, cada um mantém seus lançamentos individuais. Despesas divididas aparecem para os dois com a parte correta de cada um. Confirmar?')) return;
 
   try {
-    // Vincula a sua conta ao ID compartilhado
-    await db.collection('parcerias').doc(usuarioAtual.uid).set({ idCompartilhado: idCompartilhado, parceiroUid: parceiroUid });
-    // Vincula a conta do parceiro ao mesmo ID compartilhado
-    await db.collection('parcerias').doc(parceiroUid).set({ idCompartilhado: idCompartilhado, parceiroUid: usuarioAtual.uid });
-
-    alert("Contas vinculadas com sucesso! O aplicativo vai recarregar.");
+    await db.collection('parcerias').doc(usuarioEmail).set({
+      parceiroEmail: emailParceiro,
+      ativo: true,
+      desde: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    await db.collection('parcerias').doc(emailParceiro).set({
+      parceiroEmail: usuarioEmail,
+      ativo: true,
+      desde: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    alert('Contas conectadas! Recarregando...');
     window.location.reload();
-  } catch(e) {
-    alert("Erro ao conectar contas: " + e.message);
+  } catch (e) {
+    alert('Erro ao conectar: ' + e.message + '\n\nVerifique as regras do Firestore (permissão de escrita).');
   }
 }
 
 async function desconectarParceria() {
-  if(!confirm("Tem certeza que deseja desfazer a parceria? Seus dados voltarão ao modo individual.")) return;
+  if (!confirm('Voltar ao modo individual? Lançamentos compartilhados antigos continuam visíveis, mas novos splits exigem reconectar.')) return;
   try {
-    const vDoc = await db.collection('parcerias').doc(usuarioAtual.uid).get();
-    if(vDoc.exists) {
-      const parceiroUid = vDoc.data().parceiroUid;
-      await db.collection('parcerias').doc(usuarioAtual.uid).delete();
-      if(parceiroUid) await db.collection('parcerias').doc(parceiroUid).delete();
+    const vDoc = await db.collection('parcerias').doc(usuarioEmail).get();
+    if (vDoc.exists) {
+      const outro = (vDoc.data().parceiroEmail || '').toLowerCase().trim();
+      await db.collection('parcerias').doc(usuarioEmail).delete();
+      if (outro) await db.collection('parcerias').doc(outro).delete();
     }
-    alert("Parceria desfeita! Recarregando...");
+    alert('Modo individual ativado. Recarregando...');
     window.location.reload();
-  } catch(e) {
-    alert("Erro ao desconectar: " + e.message);
+  } catch (e) {
+    alert('Erro ao desconectar: ' + e.message);
   }
 }
 
@@ -535,12 +600,56 @@ async function salvar(){
   try { await docRef.set(dados); } catch(e) { console.error("Erro ao salvar:", e); }
 }
 
-function carregarDados(){
+function carregarDados() {
+  if (!docRef) return;
   if (unsubscribeSnap) unsubscribeSnap();
   unsubscribeSnap = docRef.onSnapshot((docSnap) => {
-    if(docSnap.exists) { dados = docSnap.data(); } else { seedDados(); }
+    if (docSnap.exists) {
+      const raw = docSnap.data();
+      dados = {
+        lancamentos: raw.lancamentos || [],
+        categorias: raw.categorias?.length ? raw.categorias : JSON.parse(JSON.stringify(CATS_PADRAO)),
+        orcamentos: raw.orcamentos || {}
+      };
+    } else {
+      seedDados();
+    }
     atualizarInterface();
   });
+}
+
+function carregarCompartilhados() {
+  if (!usuarioEmail) return;
+  if (unsubscribeShared) unsubscribeShared();
+  unsubscribeShared = db.collection('lancamentos_parceria')
+    .where('emails', 'array-contains', usuarioEmail)
+    .onSnapshot((snap) => {
+      sharedLancamentos = snap.docs.map(d => ({ ...d.data(), id: d.id, compartilhado: true }));
+      atualizarInterface();
+    }, (err) => console.error('Erro lançamentos parceria:', err));
+}
+
+function getAllLancamentos() {
+  const pessoais = (dados.lancamentos || []).map(l => ({ ...l, compartilhado: false }));
+  const comp = (sharedLancamentos || []).map(l => ({ ...l, compartilhado: true }));
+  return [...pessoais, ...comp];
+}
+
+function atualizarUISplitParceria() {
+  const hint = document.getElementById('split-hint-parceria');
+  const checkLabel = document.getElementById('split-check-label');
+  if (modoParceria && parceiroEmail) {
+    hint.style.display = 'none';
+    checkLabel.textContent = 'Dividir esta despesa com ' + (parceiroEmail.split('@')[0]);
+    document.getElementById('split-nome').value = parceiroEmail;
+    document.getElementById('split-nome').readOnly = true;
+    document.getElementById('split-nome-row').style.display = 'block';
+  } else {
+    hint.style.display = 'block';
+    checkLabel.textContent = 'Dividir despesa (só no seu controle, sem parceiro)';
+    document.getElementById('split-nome').readOnly = false;
+    document.getElementById('split-nome').placeholder = 'Ex: Namorado(a)...';
+  }
 }
 
 function atualizarInterface() {
@@ -574,13 +683,117 @@ const getMesKey = date => date.slice(0,7);
 const uid = () => 'l'+Date.now()+Math.random().toString(36).slice(2,5);
 const mesLabel = m => { const [a,mo]=m.split('-'); return new Date(a,mo-1,1).toLocaleDateString('pt-BR',{month:'long',year:'numeric'}); };
 
-function valorEfetivo(l){
-  // Se for uma despesa com split ativo, o resumo exibe a minha fração correspondente
-  if(l.split && l.tipo==='despesa'){
-    const meuPct = 100 - l.split.pct;
-    return l.valor * (meuPct/100);
+function minhaParteSplit(l) {
+  if (l.tipo !== 'despesa') return 100;
+  if (l.compartilhado && l.participantes?.length) {
+    const eu = l.participantes.find(p => p.email === usuarioEmail);
+    return eu ? Number(eu.pct) : 0;
   }
-  return l.valor;
+  if (l.split?.pct != null) return 100 - Number(l.split.pct);
+  return 100;
+}
+
+function parteDe(l, email) {
+  if (l.tipo !== 'despesa') return 0;
+  const v = Number(l.valor);
+  if (l.compartilhado && l.participantes?.length) {
+    const p = l.participantes.find(x => x.email === email);
+    return p ? v * (Number(p.pct) / 100) : 0;
+  }
+  if (l.split && email === usuarioEmail) return v * (minhaParteSplit(l) / 100);
+  return 0;
+}
+
+function calcTotaisGrupo(lancamentos) {
+  const comp = lancamentos.filter(l => l.compartilhado && l.tipo === 'despesa');
+  let totalBruto = 0, minhaParte = 0, parteParceiro = 0, saldo = 0;
+  comp.forEach(l => {
+    const v = Number(l.valor);
+    const minha = parteDe(l, usuarioEmail);
+    const deles = parceiroEmail ? parteDe(l, parceiroEmail) : 0;
+    totalBruto += v;
+    minhaParte += minha;
+    parteParceiro += deles;
+    const pagou = (l.criadoPor || '').toLowerCase();
+    if (pagou === usuarioEmail) saldo += deles;
+    else if (parceiroEmail && pagou === parceiroEmail) saldo -= minha;
+  });
+  return { totalBruto, minhaParte, parteParceiro, saldo, qtd: comp.length };
+}
+
+function renderCardGrupo(mes) {
+  const card = document.getElementById('card-grupo');
+  const noMes = calcTotaisGrupo(sharedLancamentos.filter(l => getMesKey(l.data) === mes));
+  const geral = calcTotaisGrupo(sharedLancamentos);
+  const temGrupo = modoParceria || geral.qtd > 0;
+
+  card.classList.toggle('hidden', !temGrupo);
+  if (!temGrupo) return;
+
+  const nomeParceiro = parceiroEmail
+    ? (parceiroEmail.split('@')[0] || parceiroEmail)
+    : 'Parceiro(a)';
+
+  document.getElementById('grupo-titulo').textContent = 'Despesas em grupo · ' + mesLabel(mes).replace(/^\w/, c => c.toUpperCase());
+  document.getElementById('grupo-subtitulo').textContent = noMes.qtd
+    ? noMes.qtd + ' despesa' + (noMes.qtd !== 1 ? 's' : '') + ' compartilhada' + (noMes.qtd !== 1 ? 's' : '') + ' no mês'
+    : 'Nenhuma despesa compartilhada neste mês';
+  document.getElementById('g-label-eu').textContent = 'Sua parte total';
+  document.getElementById('g-label-parceiro').textContent = 'Parte de ' + nomeParceiro;
+  document.getElementById('g-total-bruto').textContent = fmtV(noMes.totalBruto);
+  document.getElementById('g-minha-parte').textContent = fmtV(noMes.minhaParte);
+  document.getElementById('g-parte-parceiro').textContent = fmtV(noMes.parteParceiro);
+
+  const saldoEl = document.getElementById('g-saldo-valor');
+  const saldoTxt = document.getElementById('g-saldo-texto');
+  const absSaldo = Math.abs(noMes.saldo);
+  if (noMes.qtd === 0) {
+    saldoEl.textContent = '—';
+    saldoEl.className = 'grupo-saldo-val';
+    saldoTxt.textContent = 'Sem lançamentos compartilhados no mês para calcular saldo';
+  } else if (Math.abs(noMes.saldo) < 0.01) {
+    saldoEl.textContent = fmtV(0);
+    saldoEl.className = 'grupo-saldo-val green-txt';
+    saldoTxt.textContent = 'Contas em dia — ninguém deve nada';
+  } else if (noMes.saldo > 0) {
+    saldoEl.textContent = fmtV(absSaldo);
+    saldoEl.className = 'grupo-saldo-val green-txt';
+    saldoTxt.textContent = nomeParceiro + ' deve a você (você pagou contas dele(a))';
+  } else {
+    saldoEl.textContent = fmtV(absSaldo);
+    saldoEl.className = 'grupo-saldo-val red-txt';
+    saldoTxt.textContent = 'Você deve a ' + nomeParceiro + ' (ele(a) pagou contas suas)';
+  }
+
+  document.getElementById('grupo-acumulado').innerHTML = geral.qtd
+    ? '<strong>Acumulado geral:</strong> total ' + fmtV(geral.totalBruto)
+      + ' · sua parte ' + fmtV(geral.minhaParte)
+      + ' · ' + nomeParceiro + ' ' + fmtV(geral.parteParceiro)
+      + (Math.abs(geral.saldo) >= 0.01
+        ? ' · saldo ' + (geral.saldo > 0 ? nomeParceiro + ' deve ' + fmtV(geral.saldo) : 'você deve ' + fmtV(Math.abs(geral.saldo)))
+        : ' · saldo em dia')
+    : '';
+}
+
+function valorEfetivo(l) {
+  if (l.tipo !== 'despesa') return Number(l.valor);
+  const pct = minhaParteSplit(l);
+  return Number(l.valor) * (pct / 100);
+}
+
+function splitTagHTML(l) {
+  if (!l.split && !l.compartilhado) return '';
+  if (l.compartilhado && l.participantes) {
+    const eu = l.participantes.find(p => p.email === usuarioEmail);
+    const outro = l.participantes.find(p => p.email !== usuarioEmail);
+    const meuPct = eu ? eu.pct : 0;
+    const nomeOutro = outro?.nome || outro?.email?.split('@')[0] || 'Parceiro';
+    return `<span class="split-tag"><i class="ti ti-users" style="font-size:10px"></i>${nomeOutro} ${100 - meuPct}% · sua parte ${meuPct}%</span>`;
+  }
+  if (l.split?.nome) {
+    return `<span class="split-tag"><i class="ti ti-users" style="font-size:10px"></i>${l.split.nome} ${l.split.pct}%</span>`;
+  }
+  return '';
 }
 
 // ── SEÇÕES CONTROL ───────────────────────────────────────────────────
@@ -599,14 +812,14 @@ function showSection(sec){
   if(sec==='lancamentos') renderLancamentos();
   if(sec==='orcamentos') renderOrcamentos();
   if(sec==='categorias') renderCategorias();
-  if(sec==='adicionar'){ if(!document.getElementById('edit-id').value) limparForm(); }
+  if(sec==='adicionar'){ atualizarUISplitParceria(); if(!document.getElementById('edit-id').value) limparForm(); }
 }
 
 function populaMes(selId){
   const sel = document.getElementById(selId);
   const hoje = new Date();
   const mesAtual = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
-  const meses = [...new Set(dados.lancamentos.map(l=>getMesKey(l.data)))].sort().reverse();
+  const meses = [...new Set(getAllLancamentos().map(l=>getMesKey(l.data)))].sort().reverse();
   if(!meses.includes(mesAtual)) meses.unshift(mesAtual);
   const cur = sel.value || mesAtual;
   sel.innerHTML = meses.map(m=>`<option value="${m}" ${m===cur?'selected':''}>${mesLabel(m).replace(/^\w/,c=>c.toUpperCase())}</option>`).join('');
@@ -616,13 +829,13 @@ function populaMes(selId){
 function renderDashboard(){
   populaMes('filtro-mes-dash');
   const mes = document.getElementById('filtro-mes-dash').value;
-  const items = dados.lancamentos.filter(l=>getMesKey(l.data)===mes);
+  const items = getAllLancamentos().filter(l=>getMesKey(l.data)===mes);
   const recs = items.filter(l=>l.tipo==='receita');
   const desps = items.filter(l=>l.tipo==='despesa');
   const totRec = recs.reduce((s,l)=>s+Number(l.valor),0);
   const totDesp = desps.reduce((s,l)=>s+valorEfetivo(l),0);
   const saldo = totRec - totDesp;
-  const splits = desps.filter(l=>l.split);
+  const splits = desps.filter(l=>l.split || l.compartilhado);
   const totSplit = splits.reduce((s,l)=>s+valorEfetivo(l),0);
 
   document.getElementById('d-rec').textContent = fmtV(totRec);
@@ -634,15 +847,17 @@ function renderDashboard(){
   sEl.className = 'metric-value '+(saldo>=0?'green-txt':'red-txt');
   document.getElementById('d-saldo-s').textContent = saldo>=0?'✓ Positivo':'⚠ Negativo';
   document.getElementById('d-split').textContent = fmtV(totSplit);
-  document.getElementById('d-split-n').textContent = splits.length+' split'+(splits.length!==1?'s':'');
+  document.getElementById('d-split-n').textContent = splits.length+' dividido'+(splits.length!==1?'s':'');
+
+  renderCardGrupo(mes);
 
   // bar chart
   const hoje = new Date();
   const ult6 = [];
   for(let i=5;i>=0;i--){ const d=new Date(hoje.getFullYear(),hoje.getMonth()-i,1); ult6.push(`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`); }
   const labs = ult6.map(m=>{ const [a,mo]=m.split('-'); return new Date(a,mo-1,1).toLocaleDateString('pt-BR',{month:'short'}); });
-  const recData = ult6.map(m=>dados.lancamentos.filter(l=>getMesKey(l.data)===m&&l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0));
-  const despData = ult6.map(m=>dados.lancamentos.filter(l=>getMesKey(l.data)===m&&l.tipo==='despesa').reduce((s,l)=>s+valorEfetivo(l),0));
+  const recData = ult6.map(m=>getAllLancamentos().filter(l=>getMesKey(l.data)===m&&l.tipo==='receita').reduce((s,l)=>s+Number(l.valor),0));
+  const despData = ult6.map(m=>getAllLancamentos().filter(l=>getMesKey(l.data)===m&&l.tipo==='despesa').reduce((s,l)=>s+valorEfetivo(l),0));
   if(chartBar) chartBar.destroy();
   chartBar = new Chart(document.getElementById('chartBar'),{
     type:'bar',
@@ -686,7 +901,7 @@ function renderLancamentos(){
   const cat = document.getElementById('filtro-cat-lanc').value;
   const busca = (document.getElementById('busca-lanc').value||'').toLowerCase();
   populaCatFiltro('filtro-cat-lanc', cat);
-  let items = dados.lancamentos.filter(l=>getMesKey(l.data)===mes);
+  let items = getAllLancamentos().filter(l=>getMesKey(l.data)===mes);
   if(tipo) items = items.filter(l=>l.tipo===tipo);
   if(cat) items = items.filter(l=>l.cat===cat);
   if(busca) items = items.filter(l=>l.desc.toLowerCase().includes(busca));
@@ -699,11 +914,14 @@ function renderLancamentos(){
 }
 
 function lancItemHTML(l, withActions=false){
-  const cat = getCat(l.cat);
+  const cat = l.compartilhado && l.catNome
+    ? { nome: l.catNome, cor: l.catCor || '#64748b' }
+    : getCat(l.cat);
   const data = new Date(l.data+'T12:00').toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'});
-  const splitTag = l.split ? `<span class="split-tag"><i class="ti ti-users" style="font-size:10px"></i>${l.split.nome} ${l.split.pct}%</span>` : '';
+  const splitTag = splitTagHTML(l);
   const valEf = valorEfetivo(l);
-  const valStr = l.split && l.tipo==='despesa' ? `${fmtVSmall(valEf)}<br><span style="font-size:11px;color:var(--text3)">de ${fmtVSmall(l.valor)}</span>` : fmtVSmall(valEf);
+  const temSplit = (l.split || l.compartilhado) && l.tipo==='despesa' && valEf !== Number(l.valor);
+  const valStr = temSplit ? `${fmtVSmall(valEf)}<br><span style="font-size:11px;color:var(--text3)">de ${fmtVSmall(l.valor)}</span>` : fmtVSmall(valEf);
   const actions = withActions ? `<div class="lanc-actions"><button class="btn btn-sm" onclick="editLanc('${l.id}')" style="padding:6px 10px;background:var(--bg3)"><i class="ti ti-edit"></i></button><button class="btn btn-sm btn-red" onclick="delLanc('${l.id}')" style="padding:6px 10px"><i class="ti ti-trash"></i></button></div>` : '';
   return `<div class="lancamento-item">
     <div class="lanc-icon" style="background:${cat.cor}22"><i class="ti ti-${l.tipo==='receita'?'arrow-down-left':'arrow-up-right'}" style="color:${cat.cor}"></i></div>
@@ -742,24 +960,30 @@ function atualizarCatForm(){
 function toggleSplit(){
   const on = document.getElementById('split-check').checked;
   document.getElementById('split-section').style.display = on?'block':'none';
-  if(on) calcSplit();
+  if(on){ atualizarUISplitParceria(); calcSplit(); }
 }
 
 function calcSplit(){
   const val = parseFloat(document.getElementById('form-valor').value)||0;
-  const pct = parseInt(document.getElementById('split-pct').value)||50;
-  const nome = document.getElementById('split-nome').value||'Outra pessoa';
-  document.getElementById('split-pct-label').textContent = pct+'%';
+  const pctParceiro = parseInt(document.getElementById('split-pct').value)||50;
+  const nome = modoParceria && parceiroEmail
+    ? (parceiroEmail.split('@')[0])
+    : (document.getElementById('split-nome').value||'Outra pessoa');
+  document.getElementById('split-pct-label').textContent = pctParceiro+'%';
   document.getElementById('split-deles-label').textContent = 'Parte de '+nome;
-  const deles = val*(pct/100);
+  const deles = val*(pctParceiro/100);
   const meu = val - deles;
   const res = document.getElementById('split-result');
-  if(val>0){ res.style.display='flex'; document.getElementById('split-meu').textContent=fmtV(meu); document.getElementById('split-deles').textContent=fmtV(deles); }
-  else { res.style.display='none'; }
+  if(val>0){
+    res.style.display='flex';
+    document.getElementById('split-meu').textContent=fmtV(meu);
+    document.getElementById('split-deles').textContent=fmtV(deles);
+  } else { res.style.display='none'; }
 }
 
 function limparForm(){
   document.getElementById('edit-id').value='';
+  document.getElementById('edit-compartilhado').value='0';
   document.getElementById('form-desc').value='';
   document.getElementById('form-valor').value='';
   document.getElementById('form-data').value=new Date().toISOString().slice(0,10);
@@ -770,32 +994,87 @@ function limparForm(){
   document.getElementById('split-result').style.display='none';
   document.getElementById('page-title').textContent='Novo lançamento';
   setTipo('receita');
+  atualizarUISplitParceria();
 }
 
-function salvarLancamento(){
+async function salvarLancamento(){
   const id = document.getElementById('edit-id').value;
+  const editCompartilhado = document.getElementById('edit-compartilhado').value === '1';
   const desc = document.getElementById('form-desc').value.trim();
   const valor = parseFloat(document.getElementById('form-valor').value);
   const data = document.getElementById('form-data').value;
   const cat = document.getElementById('form-cat').value;
   const obs = document.getElementById('form-obs').value.trim();
   if(!desc||isNaN(valor)||valor<=0||!data){ alert('Preencha descrição, valor e data.'); return; }
+
   const splitOn = document.getElementById('split-check').checked && tipoAtual==='despesa';
+  const splitPctParceiro = parseInt(document.getElementById('split-pct').value)||50;
+  const splitPctMeu = 100 - splitPctParceiro;
+  const catInfo = getCat(cat);
+
+  if (splitOn && modoParceria && parceiroEmail) {
+    const meuNome = usuarioAtual?.displayName || usuarioEmail.split('@')[0];
+    const nomeParceiro = parceiroEmail.split('@')[0];
+    const docId = id || uid();
+    const participantes = [
+      { email: usuarioEmail, nome: meuNome, pct: splitPctMeu },
+      { email: parceiroEmail, nome: nomeParceiro, pct: splitPctParceiro }
+    ];
+    const payload = {
+      id: docId,
+      tipo: 'despesa',
+      data, desc, cat, catNome: catInfo.nome, catCor: catInfo.cor,
+      valor, obs,
+      criadoPor: usuarioEmail,
+      participantes,
+      emails: [usuarioEmail, parceiroEmail],
+      compartilhado: true,
+      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+    };
+    try {
+      await db.collection('lancamentos_parceria').doc(docId).set(payload, { merge: true });
+      limparForm();
+      showSection('lancamentos');
+    } catch (e) {
+      alert('Erro ao salvar despesa compartilhada: ' + e.message);
+    }
+    return;
+  }
+
+  if (splitOn && !modoParceria) {
+    const splitNome = document.getElementById('split-nome').value.trim();
+    if (!splitNome) { alert('Informe o nome do participante ou conecte uma parceria.'); return; }
+  }
+
   const splitNome = document.getElementById('split-nome').value.trim();
-  const splitPct = parseInt(document.getElementById('split-pct').value)||50;
-  const split = splitOn&&splitNome ? {nome:splitNome, pct:splitPct} : null;
-  const obj = {id:id||uid(), tipo:tipoAtual, data, desc, cat, valor, obs, split};
-  if(id){ const idx=dados.lancamentos.findIndex(l=>l.id===id); if(idx>=0) dados.lancamentos[idx]=obj; }
-  else { dados.lancamentos.push(obj); }
-  salvar(); limparForm(); showSection('lancamentos');
+  const split = splitOn && splitNome && !modoParceria
+    ? { nome: splitNome, pct: splitPctParceiro }
+    : null;
+
+  const obj = { id: id || uid(), tipo: tipoAtual, data, desc, cat, valor, obs, split };
+  if (id) {
+    const idx = dados.lancamentos.findIndex(l => l.id === id);
+    if (idx >= 0) dados.lancamentos[idx] = obj;
+  } else {
+    dados.lancamentos.push(obj);
+  }
+  await salvar();
+  limparForm();
+  showSection('lancamentos');
 }
 
 function editLanc(id){
-  const l = dados.lancamentos.find(x=>x.id===id);
+  let l = dados.lancamentos.find(x=>x.id===id);
+  let comp = false;
+  if (!l) {
+    l = sharedLancamentos.find(x=>x.id===id);
+    comp = !!l;
+  }
   if(!l) return;
   showSection('adicionar');
   document.getElementById('page-title').textContent='Editar lançamento';
   document.getElementById('edit-id').value=l.id;
+  document.getElementById('edit-compartilhado').value=comp?'1':'0';
   setTipo(l.tipo);
   document.getElementById('form-desc').value=l.desc;
   document.getElementById('form-valor').value=l.valor;
@@ -803,25 +1082,42 @@ function editLanc(id){
   atualizarCatForm();
   document.getElementById('form-cat').value=l.cat;
   document.getElementById('form-obs').value=l.obs||'';
-  if(l.split && l.tipo==='despesa'){
+  document.getElementById('split-check').checked=false;
+  toggleSplit();
+  if(l.tipo==='despesa' && (l.split || l.compartilhado)){
     document.getElementById('split-check').checked=true;
-    document.getElementById('split-nome').value=l.split.nome;
-    document.getElementById('split-pct').value=l.split.pct;
-    toggleSplit(); calcSplit();
+    if (l.compartilhado && l.participantes) {
+      const outro = l.participantes.find(p=>p.email!==usuarioEmail);
+      if (outro) document.getElementById('split-pct').value=outro.pct;
+    } else if (l.split) {
+      document.getElementById('split-nome').value=l.split.nome||'';
+      document.getElementById('split-pct').value=l.split.pct;
+    }
+    toggleSplit();
+    calcSplit();
   }
 }
 
-function delLanc(id){
+async function delLanc(id){
   if(!confirm('Deletar este lançamento?')) return;
+  const comp = sharedLancamentos.some(l=>l.id===id);
+  if (comp) {
+    try {
+      await db.collection('lancamentos_parceria').doc(id).delete();
+    } catch (e) {
+      alert('Erro ao deletar: ' + e.message);
+    }
+    return;
+  }
   dados.lancamentos = dados.lancamentos.filter(l=>l.id!==id);
-  salvar(); 
+  await salvar();
 }
 
 // ── ORÇAMENTOS ────────────────────────────────────────────────────
 function renderOrcamentos(){
   const hoje = new Date();
   const mes = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,'0')}`;
-  const despMes = dados.lancamentos.filter(l=>getMesKey(l.data)===mes&&l.tipo==='despesa');
+  const despMes = getAllLancamentos().filter(l=>getMesKey(l.data)===mes&&l.tipo==='despesa');
   const el = document.getElementById('orc-lista');
   const cats = dados.categorias.filter(c=>c.tipo==='despesa'&&dados.orcamentos[c.id]);
   if(cats.length===0){ el.innerHTML=`<div class="card"><div class="empty-state"><i class="ti ti-target"></i><p>Nenhum orçamento definido.</p></div></div>`; return; }
@@ -889,13 +1185,24 @@ function fecharModal(id){ document.getElementById(id).classList.add('hidden'); }
 
 // ── EXPORT CSV ────────────────────────────────────────────────────
 function exportarCSV(){
-  const header = ['Data','Descrição','Tipo','Categoria','Valor total','Minha parte','Split - Pessoa','Split - % deles','Observações'];
-  const rows = [...dados.lancamentos].sort((a,b)=>b.data.localeCompare(a.data)).map(l=>[
-    new Date(l.data+'T12:00').toLocaleDateString('pt-BR'),
-    '"'+l.desc.replace(/"/g,'""')+'"', l.tipo, getCat(l.cat).nome,
-    l.valor.toFixed(2).replace('.',','), valorEfetivo(l).toFixed(2).replace('.',','),
-    l.split?l.split.nome:'', l.split?l.split.pct+'%':'', '"'+(l.obs||'').replace(/"/g,'""')+'"'
-  ]);
+  const header = ['Data','Descrição','Tipo','Categoria','Valor total','Minha parte','Split - Pessoa','Split - % deles','Observações','Modo'];
+  const rows = [...getAllLancamentos()].sort((a,b)=>b.data.localeCompare(a.data)).map(l=>{
+    const catNome = l.catNome || getCat(l.cat).nome;
+    const splitNome = l.compartilhado && l.participantes
+      ? (l.participantes.find(p=>p.email!==usuarioEmail)?.nome || '')
+      : (l.split?.nome || '');
+    const splitPct = l.compartilhado && l.participantes
+      ? (l.participantes.find(p=>p.email!==usuarioEmail)?.pct || '')
+      : (l.split?.pct ?? '');
+    return [
+      new Date(l.data+'T12:00').toLocaleDateString('pt-BR'),
+      '"'+l.desc.replace(/"/g,'""')+'"', l.tipo, catNome,
+      Number(l.valor).toFixed(2).replace('.',','), valorEfetivo(l).toFixed(2).replace('.',','),
+      splitNome, splitPct ? splitPct+'%' : '',
+      '"'+(l.obs||'').replace(/"/g,'""')+'"',
+      l.compartilhado ? 'compartilhado' : 'individual'
+    ];
+  });
   const csv = [header.join(';'),...rows.map(r=>r.join(';'))].join('\n');
   const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
